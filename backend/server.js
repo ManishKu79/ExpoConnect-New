@@ -4,17 +4,25 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const xss = require('xss');
+const http = require('http');
 const { connectDB } = require('./src/config/db');
 const errorHandler = require('./src/middleware/errorHandler');
 const logger = require('./src/utils/logger');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./src/docs/swagger');
+const { initSocket } = require('./src/sockets');
+const { setupCronJobs } = require('./src/workers/analyticsWorker');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // Connect to MongoDB
 connectDB();
+
+// Initialize Socket.IO
+const io = initSocket(server);
+app.set('io', io);
 
 // Middleware
 app.use(helmet());
@@ -59,10 +67,14 @@ app.get('/health', (req, res) => {
 // Error handling middleware
 app.use(errorHandler);
 
+// Setup cron jobs for analytics
+setupCronJobs();
+
 // Start server
-const server = app.listen(PORT, () => {
+server.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
   logger.info(`Swagger docs available at http://localhost:${PORT}/api/docs`);
+  logger.info(`Socket.IO server ready`);
 });
 
 // Graceful shutdown
