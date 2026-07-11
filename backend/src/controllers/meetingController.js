@@ -153,6 +153,65 @@ exports.updateMeetingStatus = async (req, res, next) => {
   }
 };
 
+// Add these methods to meetingController.js
+exports.getMeetingById = async (req, res, next) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id)
+      .populate('requester', 'firstName lastName email profilePicture')
+      .populate('recipient', 'firstName lastName email profilePicture')
+      .populate('event', 'title');
+
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Meeting not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: meeting,
+    });
+  } catch (error) {
+    logger.error(`Get meeting by id error: ${error.message}`);
+    next(error);
+  }
+};
+
+exports.deleteMeeting = async (req, res, next) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id);
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Meeting not found',
+      });
+    }
+
+    // Check if user is requester or recipient
+    if (
+      meeting.requester.toString() !== req.user._id.toString() &&
+      meeting.recipient.toString() !== req.user._id.toString() &&
+      req.user.role !== 'admin'
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to delete this meeting',
+      });
+    }
+
+    await meeting.remove();
+
+    res.status(200).json({
+      success: true,
+      message: 'Meeting deleted successfully',
+    });
+  } catch (error) {
+    logger.error(`Delete meeting error: ${error.message}`);
+    next(error);
+  }
+};
+
 exports.completeMeeting = async (req, res, next) => {
   try {
     const { feedback, rating } = req.body;

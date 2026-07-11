@@ -143,6 +143,31 @@ exports.getLeadRecommendations = async (req, res, next) => {
   }
 };
 
+// Add this method to leadController.js
+exports.getLeadById = async (req, res, next) => {
+  try {
+    const lead = await Lead.findById(req.params.id)
+      .populate('visitor', 'firstName lastName email profilePicture')
+      .populate('exhibitor', 'name logo')
+      .populate('event', 'title');
+
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lead not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: lead,
+    });
+  } catch (error) {
+    logger.error(`Get lead by id error: ${error.message}`);
+    next(error);
+  }
+};
+
 exports.deleteLead = async (req, res, next) => {
   try {
     const lead = await Lead.findById(req.params.id);
