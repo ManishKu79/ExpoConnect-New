@@ -39,13 +39,6 @@ const auth = async (req, res, next) => {
       });
     }
 
-    if (!user.isEmailVerified) {
-      return res.status(403).json({
-        success: false,
-        message: 'Please verify your email before accessing this resource.',
-      });
-    }
-
     req.user = user;
     next();
   } catch (error) {
@@ -77,35 +70,4 @@ const authorize = (...roles) => {
   };
 };
 
-const checkOwnership = (model) => {
-  return async (req, res, next) => {
-    try {
-      const resource = await model.findById(req.params.id);
-      if (!resource) {
-        return res.status(404).json({
-          success: false,
-          message: 'Resource not found',
-        });
-      }
-
-      // Check if user owns the resource or is admin
-      if (
-        resource.user?.toString() !== req.user.id &&
-        resource.company?.toString() !== req.user.company?._id?.toString() &&
-        req.user.role !== 'admin'
-      ) {
-        return res.status(403).json({
-          success: false,
-          message: 'You do not have permission to access this resource',
-        });
-      }
-
-      req.resource = resource;
-      next();
-    } catch (error) {
-      next(error);
-    }
-  };
-};
-
-module.exports = { auth, authorize, checkOwnership };
+module.exports = { auth, authorize };

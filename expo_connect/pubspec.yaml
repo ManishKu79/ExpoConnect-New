@@ -53,7 +53,8 @@ flutter:
 
   assets:
     - .env
-    - assets/images/
-    - assets/svg/
-    - assets/lottie/
-    - assets/fonts/
+    # Remove the font assets for now
+    # - assets/images/
+    # - assets/svg/
+    # - assets/lottie/
+    # - assets/fonts/

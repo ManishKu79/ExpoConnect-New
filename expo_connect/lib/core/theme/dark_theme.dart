@@ -4,6 +4,7 @@ import 'colors.dart';
 
 ThemeData darkTheme = ThemeData(
   brightness: Brightness.dark,
+  useMaterial3: true,
   colorScheme: const ColorScheme.dark(
     primary: AppColors.primaryLight,
     secondary: AppColors.secondaryLight,
@@ -12,12 +13,33 @@ ThemeData darkTheme = ThemeData(
     background: AppColors.grey900,
   ),
   scaffoldBackgroundColor: AppColors.grey900,
-  fontFamily: GoogleFonts.inter().fontFamily,
-  appBarTheme: const AppBarTheme(
+  
+  textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
+    displayLarge: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+    displayMedium: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+    displaySmall: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+    headlineLarge: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.white),
+    headlineMedium: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.white),
+    headlineSmall: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+    titleLarge: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.white),
+    titleMedium: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+    titleSmall: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey),
+    bodyLarge: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal, color: Colors.grey),
+    bodyMedium: const TextStyle(fontSize: 14, fontWeight: FontWeight.normal, color: Colors.grey),
+    bodySmall: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal, color: Colors.grey),
+    labelLarge: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryLight),
+  ),
+  
+  appBarTheme: AppBarTheme(
     elevation: 0,
     centerTitle: true,
     backgroundColor: Colors.transparent,
     foregroundColor: Colors.white,
+    titleTextStyle: GoogleFonts.inter(
+      fontSize: 20,
+      fontWeight: FontWeight.w600,
+      color: Colors.white,
+    ),
   ),
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
@@ -77,7 +99,7 @@ ThemeData darkTheme = ThemeData(
     ),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
   ),
-  cardTheme: CardTheme(
+  cardTheme: CardThemeData(
     elevation: 0,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(16),

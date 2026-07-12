@@ -22,10 +22,6 @@ class ApiService {
             options.headers['Authorization'] = 'Bearer $token';
           }
           _logger.i('${options.method} ${options.path}');
-          _logger.d('Headers: ${options.headers}');
-          if (options.data != null) {
-            _logger.d('Body: ${options.data}');
-          }
           return handler.next(options);
         },
         onResponse: (response, handler) {
@@ -34,14 +30,11 @@ class ApiService {
         },
         onError: (error, handler) async {
           _logger.e('Error: ${error.message}');
-          _logger.e('Response: ${error.response?.data}');
-
-          // Handle token refresh
+          
           if (error.response?.statusCode == 401) {
             try {
               final refreshToken = await StorageService.getRefreshToken();
               if (refreshToken != null) {
-                // Try to refresh token
                 final response = await _dio.post(
                   ApiEndpoints.refreshToken,
                   data: {'refreshToken': refreshToken},
@@ -50,7 +43,6 @@ class ApiService {
                   final data = response.data['data'];
                   await StorageService.saveToken(data['token']);
                   await StorageService.saveRefreshToken(data['refreshToken']);
-                  // Retry original request
                   final opts = Options(
                     method: error.requestOptions.method,
                     headers: {
@@ -121,24 +113,5 @@ class ApiService {
     Options? options,
   }) async {
     return dio.patch(path, data: data, queryParameters: queryParameters, options: options);
-  }
-
-  static Future<Response> upload(
-    String path,
-    FormData formData, {
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-  }) async {
-    return dio.post(
-      path,
-      data: formData,
-      queryParameters: queryParameters,
-      options: options?.copyWith(
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          ...?options.headers,
-        },
-      ),
-    );
   }
 }

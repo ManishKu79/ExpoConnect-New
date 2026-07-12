@@ -4,12 +4,12 @@ const bcrypt = require('bcryptjs');
 const UserSchema = new mongoose.Schema({
   firstName: {
     type: String,
-    required: [true, 'First name is required'],
+    default: 'User',
     trim: true,
   },
   lastName: {
     type: String,
-    required: [true, 'Last name is required'],
+    default: 'Name',
     trim: true,
   },
   email: {
@@ -17,13 +17,14 @@ const UserSchema = new mongoose.Schema({
     required: [true, 'Email is required'],
     unique: true,
     lowercase: true,
+    trim: true,
     match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email'],
   },
   password: {
     type: String,
     required: [true, 'Password is required'],
     minlength: 6,
-    select: false, // not returned by default
+    select: false,
   },
   role: {
     type: String,
@@ -32,7 +33,7 @@ const UserSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    match: [/^\+?[1-9]\d{1,14}$/, 'Please provide a valid phone number'],
+    default: '',
   },
   profilePicture: {
     type: String,
@@ -41,11 +42,11 @@ const UserSchema = new mongoose.Schema({
   bio: {
     type: String,
     maxlength: 500,
+    default: '',
   },
   company: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Company',
-    // Only required if role is 'exhibitor' or 'sponsor'
   },
   interests: [{
     type: String,
