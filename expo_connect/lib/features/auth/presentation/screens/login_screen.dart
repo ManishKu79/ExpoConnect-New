@@ -21,12 +21,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _obscurePassword = true;
 
   @override
-  void initState() {
-    super.initState();
-    print('🔵 LoginScreen initState');
-  }
-
-  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -38,23 +32,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authStateProvider);
     final authNotifier = ref.read(authStateProvider.notifier);
 
-    // Auto-navigate if already authenticated
     if (authState.isAuthenticated) {
-      print('🔵 LoginScreen: Already authenticated, navigating to home');
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.go('/');
       });
     }
 
-    // Listen for authentication state changes and navigate
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (authState.isAuthenticated && mounted) {
-        print('🔵 LoginScreen: Authentication successful, navigating to home');
-        context.go('/');
-      }
-    });
-
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -82,18 +67,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Text(
+                      const Text(
                         'Welcome Back',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
+                      const Text(
                         'Sign in to continue your expo journey',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: AppColors.grey600,
-                            ),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.black54,
+                        ),
                       ),
                     ],
                   ),
@@ -120,6 +108,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       _obscurePassword
                           ? Icons.visibility_outlined
                           : Icons.visibility_off_outlined,
+                      color: Colors.black54,
                     ),
                     onPressed: () {
                       setState(() {
@@ -137,7 +126,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onPressed: () {
                       context.go('/forgot-password');
                     },
-                    child: const Text('Forgot Password?'),
+                    child: const Text(
+                      'Forgot Password?',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -146,17 +140,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppColors.error.withOpacity(0.1),
+                      color: Colors.red.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.error_outline, color: AppColors.error),
+                        const Icon(Icons.error_outline, color: Colors.red),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             authState.error!,
-                            style: TextStyle(color: AppColors.error),
+                            style: const TextStyle(color: Colors.red),
                           ),
                         ),
                       ],
@@ -169,12 +163,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ? null
                       : () async {
                           if (_formKey.currentState?.validate() ?? false) {
-                            print('🔵 LoginScreen: Attempting login');
                             await authNotifier.login(
                               _emailController.text.trim(),
                               _passwordController.text.trim(),
                             );
-                            // Navigation will happen via the postFrameCallback
                           }
                         },
                   text: 'Sign In',
@@ -185,28 +177,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
+                    const Text(
                       "Don't have an account?",
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: TextStyle(
+                        color: Colors.black54,
+                      ),
                     ),
                     TextButton(
                       onPressed: () {
                         context.go('/register');
                       },
-                      child: const Text('Sign Up'),
+                      child: const Text(
+                        'Sign Up',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ),
                   ],
                 ),
                 const Spacer(flex: 1),
-                // Debug info
-                if (authState.isLoading)
-                  const Padding(
-                    padding: EdgeInsets.all(8.0),
-                    child: Text(
-                      'Logging in...',
-                      style: TextStyle(color: AppColors.grey600),
-                    ),
-                  ),
               ],
             ),
           ),

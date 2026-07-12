@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'colors.dart';
 
 ThemeData darkTheme = ThemeData(
@@ -9,38 +8,44 @@ ThemeData darkTheme = ThemeData(
     primary: AppColors.primaryLight,
     secondary: AppColors.secondaryLight,
     error: AppColors.errorLight,
-    surface: AppColors.grey900,
-    background: AppColors.grey900,
+    surface: Color(0xFF1A1A2E),
+    background: Color(0xFF1A1A2E),
+    onPrimary: Colors.white,
+    onSecondary: Colors.white,
+    onSurface: Colors.white,
+    onBackground: Colors.white,
   ),
-  scaffoldBackgroundColor: AppColors.grey900,
+  scaffoldBackgroundColor: const Color(0xFF1A1A2E),
+  primaryColor: AppColors.primaryLight,
   
-  textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
-    displayLarge: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
-    displayMedium: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
-    displaySmall: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-    headlineLarge: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.white),
-    headlineMedium: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.white),
-    headlineSmall: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
-    titleLarge: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.white),
-    titleMedium: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
-    titleSmall: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey),
-    bodyLarge: const TextStyle(fontSize: 16, fontWeight: FontWeight.normal, color: Colors.grey),
-    bodyMedium: const TextStyle(fontSize: 14, fontWeight: FontWeight.normal, color: Colors.grey),
-    bodySmall: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal, color: Colors.grey),
-    labelLarge: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryLight),
+  textTheme: const TextTheme(
+    displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+    displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+    displaySmall: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+    headlineLarge: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.white),
+    headlineMedium: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.white),
+    headlineSmall: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.white),
+    titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+    titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+    titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white),
+    bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.normal, color: Colors.white),
+    bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.normal, color: Colors.white),
+    bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.normal, color: Colors.white),
+    labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryLight),
   ),
   
-  appBarTheme: AppBarTheme(
+  appBarTheme: const AppBarTheme(
     elevation: 0,
     centerTitle: true,
-    backgroundColor: Colors.transparent,
+    backgroundColor: Color(0xFF1A1A2E),
     foregroundColor: Colors.white,
-    titleTextStyle: GoogleFonts.inter(
+    titleTextStyle: TextStyle(
       fontSize: 20,
       fontWeight: FontWeight.w600,
       color: Colors.white,
     ),
   ),
+  
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
       backgroundColor: AppColors.primaryLight,
@@ -50,12 +55,14 @@ ThemeData darkTheme = ThemeData(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      textStyle: GoogleFonts.inter(
+      textStyle: const TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w600,
+        color: Colors.white,
       ),
     ),
   ),
+  
   outlinedButtonTheme: OutlinedButtonThemeData(
     style: OutlinedButton.styleFrom(
       foregroundColor: AppColors.primaryLight,
@@ -64,22 +71,35 @@ ThemeData darkTheme = ThemeData(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      textStyle: GoogleFonts.inter(
+      textStyle: const TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w600,
+        color: AppColors.primaryLight,
       ),
     ),
   ),
+  
+  textButtonTheme: TextButtonThemeData(
+    style: TextButton.styleFrom(
+      foregroundColor: AppColors.primaryLight,
+      textStyle: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: AppColors.primaryLight,
+      ),
+    ),
+  ),
+  
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
-    fillColor: AppColors.grey800,
+    fillColor: Colors.grey[900],
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.grey700),
+      borderSide: const BorderSide(color: Colors.grey),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.grey700),
+      borderSide: const BorderSide(color: Colors.grey),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
@@ -89,21 +109,27 @@ ThemeData darkTheme = ThemeData(
       borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: AppColors.errorLight),
     ),
-    labelStyle: GoogleFonts.inter(
+    labelStyle: const TextStyle(
       fontSize: 14,
-      color: AppColors.grey400,
+      color: Colors.white54,
     ),
-    hintStyle: GoogleFonts.inter(
+    hintStyle: const TextStyle(
       fontSize: 14,
-      color: AppColors.grey500,
+      color: Colors.white38,
     ),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
   ),
+  
   cardTheme: CardThemeData(
-    elevation: 0,
+    elevation: 2,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(16),
     ),
-    color: AppColors.grey800,
+    color: const Color(0xFF2D2D44),
+  ),
+  
+  listTileTheme: const ListTileThemeData(
+    textColor: Colors.white,
+    iconColor: AppColors.primaryLight,
   ),
 );

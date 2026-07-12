@@ -15,7 +15,7 @@ class ExpoConnectApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.light, // Force light mode
       routerConfig: router,
     );
   }
