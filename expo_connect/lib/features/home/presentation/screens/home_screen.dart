@@ -77,7 +77,9 @@ class HomeScreen extends ConsumerWidget {
                 _QuickActionCard(
                   icon: Icons.event,
                   label: 'Events',
-                  onTap: () {},
+                  onTap: () {
+                    context.go('/events');
+                  },
                 ),
                 _QuickActionCard(
                   icon: Icons.connect_without_contact,

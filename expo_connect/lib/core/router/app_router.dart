@@ -8,6 +8,8 @@ import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/verify_email_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/events/presentation/screens/event_list_screen.dart';
+import '../../features/events/presentation/screens/event_detail_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -52,6 +54,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'profile',
         builder: (context, state) => const ProfileScreen(),
       ),
+      // Event routes
+      GoRoute(
+        path: '/events',
+        name: 'events',
+        builder: (context, state) => const EventListScreen(),
+      ),
+      GoRoute(
+        path: '/events/:id',
+        name: 'event-detail',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return EventDetailScreen(eventId: id);
+        },
+      ),
     ],
   );
 });
@@ -65,4 +81,6 @@ class AppRoutes {
   static const String verifyEmail = '/verify-email';
   static const String home = '/';
   static const String profile = '/profile';
+  static const String events = '/events';
+  static const String eventDetail = '/events/:id';
 }
