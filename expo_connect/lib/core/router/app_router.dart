@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,14 +8,63 @@ import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/verify_email_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/home/presentation/screens/visitor_home_screen.dart';
+import '../../features/home/presentation/screens/exhibitor_home_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/events/presentation/screens/event_list_screen.dart';
 import '../../features/events/presentation/screens/event_detail_screen.dart';
+import '../../features/auth/presentation/providers/auth_provider.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  // Helper to get the correct home screen based on role
+  Widget getHomeScreen(BuildContext context) {
+    final authState = ref.read(authStateProvider);
+    final user = authState.user;
+    
+    if (user == null) {
+      return const LoginScreen();
+    }
+    
+    switch (user.role) {
+      case 'visitor':
+        return const VisitorHomeScreen();
+      case 'exhibitor':
+        return const ExhibitorHomeScreen();
+      case 'organizer':
+        return const HomeScreen();
+      case 'admin':
+        return const HomeScreen();
+      case 'sponsor':
+        return const HomeScreen();
+      case 'speaker':
+        return const HomeScreen();
+      case 'investor':
+        return const HomeScreen();
+      default:
+        return const VisitorHomeScreen();
+    }
+  }
+
   return GoRouter(
     initialLocation: '/splash',
     debugLogDiagnostics: true,
+    redirect: (context, state) {
+      final authState = ref.read(authStateProvider);
+      final isAuth = authState.isAuthenticated;
+      final isAuthRoute = state.matchedLocation.contains('/login') ||
+          state.matchedLocation.contains('/register') ||
+          state.matchedLocation.contains('/forgot-password') ||
+          state.matchedLocation.contains('/verify-email') ||
+          state.matchedLocation.contains('/splash');
+
+      if (!isAuth && !isAuthRoute) {
+        return '/login';
+      }
+      if (isAuth && isAuthRoute && state.matchedLocation != '/splash') {
+        return '/';
+      }
+      return null;
+    },
     routes: [
       // Splash
       GoRoute(
@@ -47,7 +97,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/',
         name: 'home',
-        builder: (context, state) => const HomeScreen(),
+        builder: (context, state) => getHomeScreen(context),
       ),
       GoRoute(
         path: '/profile',

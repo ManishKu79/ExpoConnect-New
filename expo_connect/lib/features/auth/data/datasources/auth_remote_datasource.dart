@@ -98,4 +98,44 @@ class AuthRemoteDataSource {
     );
     return response.data;
   }
+
+  Future<Map<String, dynamic>> updateProfile({
+    required String userId,
+    String? firstName,
+    String? lastName,
+    String? phone,
+    String? bio,
+    List<String>? interests,
+  }) async {
+    final data = <String, dynamic>{};
+    if (firstName != null) data['firstName'] = firstName;
+    if (lastName != null) data['lastName'] = lastName;
+    if (phone != null) data['phone'] = phone;
+    if (bio != null) data['bio'] = bio;
+    if (interests != null) data['interests'] = interests;
+    
+    final response = await dio.put(
+      '${ApiEndpoints.users}/$userId',
+      data: data,
+    );
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> changePassword(String currentPassword, String newPassword) async {
+    final response = await dio.post(
+      ApiEndpoints.changePassword,
+      data: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      },
+    );
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> deleteAccount(String userId) async {
+    final response = await dio.delete(
+      '${ApiEndpoints.users}/$userId',
+    );
+    return response.data;
+  }
 }

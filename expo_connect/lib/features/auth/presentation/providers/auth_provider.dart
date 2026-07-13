@@ -22,6 +22,7 @@ final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(ref.read(authRepositoryProvider));
 });
 
+// ============ AUTH STATE ============
 class AuthState {
   final User? user;
   final bool isLoading;
@@ -50,6 +51,7 @@ class AuthState {
   }
 }
 
+// ============ AUTH NOTIFIER ============
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository repository;
 
@@ -57,6 +59,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     checkAuthStatus();
   }
 
+  // ============ CHECK AUTH STATUS ============
   Future<void> checkAuthStatus() async {
     final isLoggedIn = await StorageService.isLoggedIn();
     print('🔍 checkAuthStatus: isLoggedIn = $isLoggedIn');
@@ -87,6 +90,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  // ============ LOGIN ============
   Future<void> login(String email, String password) async {
     print('🔐 Login started for: $email');
     state = state.copyWith(isLoading: true, error: null);
@@ -99,7 +103,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isLoading: false,
         error: null,
       );
-      print('📢 State updated: isAuthenticated = true');
     } catch (e) {
       print('❌ Login error: $e');
       state = state.copyWith(
@@ -109,6 +112,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  // ============ REGISTER ============
   Future<void> register({
     required String firstName,
     required String lastName,
@@ -144,6 +148,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  // ============ VERIFY EMAIL ============
+  Future<void> verifyEmail(String token) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await repository.verifyEmail(token);
+      state = state.copyWith(
+        isLoading: false,
+        error: null,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+    }
+  }
+
+  // ============ FORGOT PASSWORD ============
   Future<void> forgotPassword(String email) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -160,6 +182,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  // ============ RESET PASSWORD ============
   Future<void> resetPassword(String token, String password) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -176,7 +199,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  // ============ GET CURRENT USER ============
+  Future<User?> getCurrentUser() async {
+    try {
+      final user = await repository.getCurrentUser();
+      return user;
+    } catch (e) {
+      print('❌ Get current user error: $e');
+      return null;
+    }
+  }
+
+  // ============ LOGOUT ============
   Future<void> logout() async {
+    print('👋 Logging out');
     await repository.logout();
     state = state.copyWith(
       user: null,
@@ -185,7 +221,108 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 
+  // ============ UPDATE PROFILE ============
+  Future<void> updateProfile({
+    String? firstName,
+    String? lastName,
+    String? phone,
+    String? bio,
+    List<String>? interests,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final user = state.user;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+      
+      final updatedUser = await repository.updateProfile(
+        userId: user.id,
+        firstName: firstName,
+        lastName: lastName,
+        phone: phone,
+        bio: bio,
+        interests: interests,
+      );
+      
+      state = state.copyWith(
+        user: updatedUser,
+        isLoading: false,
+        error: null,
+      );
+    } catch (e) {
+      print('❌ Update profile error: $e');
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+      rethrow;
+    }
+  }
+
+  // ============ CHANGE PASSWORD ============
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await repository.changePassword(currentPassword, newPassword);
+      state = state.copyWith(
+        isLoading: false,
+        error: null,
+      );
+    } catch (e) {
+      print('❌ Change password error: $e');
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+      rethrow;
+    }
+  }
+
+  // ============ DELETE ACCOUNT ============
+  Future<void> deleteAccount() async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final user = state.user;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+      
+      await repository.deleteAccount(user.id);
+      await logout();
+    } catch (e) {
+      print('❌ Delete account error: $e');
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+      rethrow;
+    }
+  }
+
+  // ============ CLEAR ERROR ============
   void clearError() {
     state = state.copyWith(error: null);
+  }
+
+  // ============ REFRESH USER ============
+  Future<void> refreshUser() async {
+    try {
+      final user = await repository.getCurrentUser();
+      if (user != null) {
+        state = state.copyWith(
+          user: user,
+          isAuthenticated: true,
+          error: null,
+        );
+      }
+    } catch (e) {
+      print('❌ Refresh user error: $e');
+    }
+  }
+
+  // ============ IS LOGGED IN ============
+  Future<bool> isLoggedIn() async {
+    return await repository.isLoggedIn();
   }
 }

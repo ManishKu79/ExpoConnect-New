@@ -132,4 +132,53 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<bool> isLoggedIn() async {
     return await StorageService.isLoggedIn();
   }
+
+  @override
+  Future<User> updateProfile({
+    required String userId,
+    String? firstName,
+    String? lastName,
+    String? phone,
+    String? bio,
+    List<String>? interests,
+  }) async {
+    try {
+      final response = await remoteDataSource.updateProfile(
+        userId: userId,
+        firstName: firstName,
+        lastName: lastName,
+        phone: phone,
+        bio: bio,
+        interests: interests,
+      );
+      final data = response['data'];
+      if (data == null) {
+        throw Exception('No data in response');
+      }
+      return UserModel.fromJson(data);
+    } catch (e) {
+      print('❌ Update profile error: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    try {
+      await remoteDataSource.changePassword(currentPassword, newPassword);
+    } catch (e) {
+      print('❌ Change password error: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> deleteAccount(String userId) async {
+    try {
+      await remoteDataSource.deleteAccount(userId);
+    } catch (e) {
+      print('❌ Delete account error: $e');
+      rethrow;
+    }
+  }
 }

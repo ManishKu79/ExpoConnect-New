@@ -7,15 +7,15 @@ ThemeData darkTheme = ThemeData(
   colorScheme: const ColorScheme.dark(
     primary: AppColors.primaryLight,
     secondary: AppColors.secondaryLight,
-    error: AppColors.errorLight,
-    surface: Color(0xFF1A1A2E),
-    background: Color(0xFF1A1A2E),
+    error: AppColors.error,
+    surface: AppColors.grey900,
+    background: AppColors.grey900,
     onPrimary: Colors.white,
     onSecondary: Colors.white,
     onSurface: Colors.white,
     onBackground: Colors.white,
   ),
-  scaffoldBackgroundColor: const Color(0xFF1A1A2E),
+  scaffoldBackgroundColor: AppColors.grey900,
   primaryColor: AppColors.primaryLight,
   
   textTheme: const TextTheme(
@@ -37,7 +37,7 @@ ThemeData darkTheme = ThemeData(
   appBarTheme: const AppBarTheme(
     elevation: 0,
     centerTitle: true,
-    backgroundColor: Color(0xFF1A1A2E),
+    backgroundColor: AppColors.grey900,
     foregroundColor: Colors.white,
     titleTextStyle: TextStyle(
       fontSize: 20,
@@ -92,14 +92,14 @@ ThemeData darkTheme = ThemeData(
   
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
-    fillColor: Colors.grey[900],
+    fillColor: AppColors.grey800,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Colors.grey),
+      borderSide: const BorderSide(color: AppColors.grey700),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Colors.grey),
+      borderSide: const BorderSide(color: AppColors.grey700),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
@@ -107,15 +107,15 @@ ThemeData darkTheme = ThemeData(
     ),
     errorBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: AppColors.errorLight),
+      borderSide: const BorderSide(color: AppColors.error),
     ),
     labelStyle: const TextStyle(
       fontSize: 14,
-      color: Colors.white54,
+      color: AppColors.grey400,
     ),
     hintStyle: const TextStyle(
       fontSize: 14,
-      color: Colors.white38,
+      color: AppColors.grey500,
     ),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
   ),
@@ -125,7 +125,7 @@ ThemeData darkTheme = ThemeData(
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(16),
     ),
-    color: const Color(0xFF2D2D44),
+    color: AppColors.grey800,
   ),
   
   listTileTheme: const ListTileThemeData(

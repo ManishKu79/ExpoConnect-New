@@ -30,24 +30,31 @@ class User {
   String get fullName => '$firstName $lastName';
   String get initials => '${firstName[0]}${lastName[0]}'.toUpperCase();
 
+  bool get isVisitor => role == 'visitor';
+  bool get isExhibitor => role == 'exhibitor';
+  bool get isOrganizer => role == 'organizer';
+  bool get isAdmin => role == 'admin';
+  bool get isSponsor => role == 'sponsor';
+  bool get isSpeaker => role == 'speaker';
+  bool get isInvestor => role == 'investor';
+
   factory User.fromJson(Map<String, dynamic> json) {
-    // Handle null values gracefully
     return User(
-      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
-      firstName: json['firstName']?.toString() ?? '',
-      lastName: json['lastName']?.toString() ?? '',
-      email: json['email']?.toString() ?? '',
-      phone: json['phone']?.toString(),
-      role: json['role']?.toString() ?? 'visitor',
-      profilePicture: json['profilePicture']?.toString(),
+      id: json['_id'] ?? json['id'] ?? '',
+      firstName: json['firstName'] ?? '',
+      lastName: json['lastName'] ?? '',
+      email: json['email'] ?? '',
+      phone: json['phone'],
+      role: json['role'] ?? 'visitor',
+      profilePicture: json['profilePicture'],
       isEmailVerified: json['isEmailVerified'] ?? false,
-      bio: json['bio']?.toString(),
-      companyId: json['company']?.toString(),
+      bio: json['bio'],
+      companyId: json['company'],
       interests: json['interests'] != null 
           ? List<String>.from(json['interests']) 
           : null,
       createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt'].toString()) 
+          ? DateTime.parse(json['createdAt']) 
           : DateTime.now(),
     );
   }
