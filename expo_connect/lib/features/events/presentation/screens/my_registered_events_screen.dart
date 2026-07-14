@@ -19,10 +19,12 @@ class _MyRegisteredEventsScreenState extends ConsumerState<MyRegisteredEventsScr
   @override
   void initState() {
     super.initState();
+    print('🟢 ===== MY REGISTERED EVENTS SCREEN INIT =====');
     _loadEvents();
   }
 
   void _loadEvents() {
+    print('🔄 Loading registered events...');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(myRegisteredEventsProvider.notifier).loadRegisteredEvents();
     });
@@ -32,6 +34,8 @@ class _MyRegisteredEventsScreenState extends ConsumerState<MyRegisteredEventsScr
   Widget build(BuildContext context) {
     final eventsState = ref.watch(myRegisteredEventsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    print('📊 Events State: ${eventsState.runtimeType}');
 
     return Scaffold(
       appBar: AppBar(
@@ -46,33 +50,43 @@ class _MyRegisteredEventsScreenState extends ConsumerState<MyRegisteredEventsScr
         ],
       ),
       body: eventsState.when(
-        loading: () => const LoadingWidget(),
-        error: (err, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 60, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(
-                'Error: $err',
-                style: TextStyle(color: isDark ? Colors.white : Colors.black),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _loadEvents,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  foregroundColor: Colors.white,
+        loading: () {
+          print('⏳ Loading events...');
+          return const LoadingWidget();
+        },
+        error: (err, stack) {
+          print('❌ Error loading events: $err');
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 60, color: Colors.red),
+                const SizedBox(height: 16),
+                Text(
+                  'Error: $err',
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
                 ),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _loadEvents,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        },
         data: (events) {
           print('📝 Found ${events.length} registered events');
+          events.forEach((event) {
+            print('📝 Event: Title="${event.title}", ID="${event.id}"');
+          });
           
           if (events.isEmpty) {
+            print('📭 No registered events');
             return Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -103,10 +117,15 @@ class _MyRegisteredEventsScreenState extends ConsumerState<MyRegisteredEventsScr
               return _RegisteredEventCard(
                 event: event,
                 onTap: () {
-                  print('🔍 Navigating to event-entry with ID: ${event.id}');
-                  if (event.id.isNotEmpty && event.id != 'undefined') {
+                  print('🔍 ===== EVENT CARD TAPPED =====');
+                  print('📝 Event ID: "${event.id}"');
+                  print('📝 Event Title: "${event.title}"');
+                  
+                  if (event.id.isNotEmpty && event.id != 'undefined' && event.id != 'null') {
+                    print('✅ Navigating to event-entry/${event.id}');
                     context.go('/event-entry/${event.id}');
                   } else {
+                    print('❌ Invalid event ID - cannot navigate');
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Error: Event ID not found'),

@@ -11,6 +11,7 @@ router.use(auth);
 
 // ============ REGISTRATION ROUTES ============
 router.get('/my-registered-events', eventController.getMyRegisteredEvents);
+router.get('/my-events', authorize('organizer', 'admin'), eventController.getMyEvents);
 router.get('/:id/registration-status', eventController.checkRegistrationStatus);
 router.post('/:id/register', eventController.registerForEvent);
 router.delete('/:id/register', eventController.unregisterFromEvent);
@@ -21,7 +22,6 @@ router.post('/verify-qr', eventController.verifyEntryQR);
 
 // ============ ORGANIZER ROUTES ============
 router.post('/', authorize('organizer', 'admin'), eventController.createEvent);
-router.get('/my-events', authorize('organizer', 'admin'), eventController.getMyEvents);
 router.put('/:id', authorize('organizer', 'admin'), eventController.updateEvent);
 router.delete('/:id', authorize('organizer', 'admin'), eventController.deleteEvent);
 

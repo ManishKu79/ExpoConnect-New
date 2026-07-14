@@ -25,12 +25,12 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
   @override
   void initState() {
     super.initState();
-    print('🔍 EventEntryQRScreen initialized with eventId: "${widget.eventId}"');
+    print('🔵 ===== EVENT ENTRY QR SCREEN INIT =====');
+    print('📝 Event ID received: "${widget.eventId}"');
     
     if (widget.eventId.isEmpty || 
         widget.eventId == 'undefined' || 
-        widget.eventId == 'null' ||
-        widget.eventId == '') {
+        widget.eventId == 'null') {
       setState(() {
         _error = 'Invalid event ID. Please go back and try again.';
         _isLoading = false;
@@ -52,22 +52,22 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
       print('🔍 Loading QR code for event: ${widget.eventId}');
       
       final repo = ref.read(eventRepositoryProvider);
-      final qrData = await repo.getEntryQR(widget.eventId);
+      final response = await repo.getEntryQR(widget.eventId);
       
-      print('📝 QR Data received: $qrData');
+      print('📝 Response received: $response');
       
-      if (qrData == null) {
+      if (response == null) {
         throw Exception('No data received from server');
       }
       
-      final qrCode = qrData['qrCode'];
-      final eventTitle = qrData['eventTitle'];
+      final qrCode = response['qrCode'];
+      final eventTitle = response['eventTitle'];
       
-      print('📝 QR Code present: ${qrCode != null ? 'Yes' : 'No'}');
+      print('📝 QR Code: ${qrCode != null ? "Present (length: ${qrCode.length})" : "NULL"}');
       print('📝 Event Title: $eventTitle');
       
       if (qrCode == null || qrCode.isEmpty) {
-        throw Exception('QR code is empty or null. Make sure you are registered for this event.');
+        throw Exception('QR code is empty. Make sure you are registered for this event.');
       }
       
       setState(() {
@@ -89,6 +89,8 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    print('🔍 Building QR Screen - isLoading: $_isLoading, qrCode: ${_qrCode != null ? "Present" : "NULL"}');
 
     return Scaffold(
       appBar: AppBar(
@@ -158,7 +160,7 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
                     ),
                   ),
                 )
-              : _qrCode != null
+              : _qrCode != null && _qrCode.isNotEmpty
                   ? SingleChildScrollView(
                       padding: const EdgeInsets.all(24),
                       child: Column(
@@ -228,12 +230,22 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
                                       color: isDark ? AppColors.grey700 : AppColors.grey200,
                                     ),
                                   ),
-                                  child: Image.memory(
-                                    base64Decode(_qrCode!.split(',')[1]),
-                                    height: 250,
-                                    width: 250,
-                                    fit: BoxFit.contain,
-                                  ),
+                                  child: _qrCode!.startsWith('data:image')
+                                      ? Image.memory(
+                                          base64Decode(_qrCode!.split(',')[1]),
+                                          height: 250,
+                                          width: 250,
+                                          fit: BoxFit.contain,
+                                        )
+                                      : Image.network(
+                                          _qrCode!,
+                                          height: 250,
+                                          width: 250,
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return const Icon(Icons.broken_image, size: 50);
+                                          },
+                                        ),
                                 ),
                                 const SizedBox(height: 20),
                                 Container(

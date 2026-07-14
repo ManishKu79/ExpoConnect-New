@@ -118,6 +118,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'event-detail',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
+          print('🔍 Navigating to event detail with ID: $id');
           return EventDetailScreen(eventId: id);
         },
       ),
@@ -148,6 +149,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'event-entry',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
+          print('🔍 Navigating to event-entry with ID: $id');
           return EventEntryQRScreen(eventId: id);
         },
       ),

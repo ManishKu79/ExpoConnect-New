@@ -36,10 +36,11 @@
   factory Event.fromJson(Map<String, dynamic> json) {
     // Get ID from multiple possible sources
     String getId() {
-      // Check _id first (MongoDB)
+      if (json['id'] != null && json['id'].toString().isNotEmpty) {
+        return json['id'].toString();
+      }
       if (json['_id'] != null) {
         if (json['_id'] is String) return json['_id'];
-        // Handle MongoDB ObjectId format
         if (json['_id'] is Map) {
           final idMap = json['_id'] as Map;
           if (idMap.containsKey('\$oid')) {
@@ -48,11 +49,6 @@
         }
         return json['_id'].toString();
       }
-      // Check id field
-      if (json['id'] != null) {
-        return json['id'].toString();
-      }
-      // Fallback
       return '';
     }
 
