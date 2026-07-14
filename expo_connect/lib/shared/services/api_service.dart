@@ -13,6 +13,11 @@ class ApiService {
     _dio.options.connectTimeout = const Duration(seconds: 30);
     _dio.options.receiveTimeout = const Duration(seconds: 30);
     _dio.options.sendTimeout = const Duration(seconds: 30);
+    
+    // Don't throw on non-2xx status codes - handle them manually
+    _dio.options.validateStatus = (status) {
+      return status != null && status < 500;
+    };
 
     _dio.interceptors.add(
       InterceptorsWrapper(
@@ -22,15 +27,23 @@ class ApiService {
             options.headers['Authorization'] = 'Bearer $token';
           }
           _logger.i('${options.method} ${options.path}');
+          if (options.data != null) {
+            _logger.d('Request data: ${options.data}');
+          }
           return handler.next(options);
         },
         onResponse: (response, handler) {
           _logger.i('Response: ${response.statusCode} ${response.requestOptions.path}');
+          _logger.d('Response data: ${response.data}');
           return handler.next(response);
         },
         onError: (error, handler) async {
           _logger.e('Error: ${error.message}');
+          if (error.response != null) {
+            _logger.e('Error response: ${error.response?.data}');
+          }
           
+          // Handle token refresh
           if (error.response?.statusCode == 401) {
             try {
               final refreshToken = await StorageService.getRefreshToken();

@@ -12,6 +12,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./src/docs/swagger');
 const { initSocket } = require('./src/sockets');
 const { setupCronJobs } = require('./src/workers/analyticsWorker');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -47,6 +48,8 @@ app.use((req, res, next) => {
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));

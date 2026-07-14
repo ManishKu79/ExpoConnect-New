@@ -21,6 +21,8 @@ class EventRepositoryImpl implements EventRepository {
         page: page,
         limit: limit,
       );
+      print('📦 Get events response: ${response['data']}');
+      
       final data = response['data'] as List? ?? [];
       return data.map((json) => Event.fromJson(json)).toList();
     } catch (e) {
@@ -33,6 +35,7 @@ class EventRepositoryImpl implements EventRepository {
   Future<Event> getEventById(String id) async {
     try {
       final response = await remoteDataSource.getEventById(id);
+      print('📦 Get event by id response: ${response['data']}');
       return Event.fromJson(response['data']);
     } catch (e) {
       print('❌ Get event by id error: $e');
@@ -64,6 +67,7 @@ class EventRepositoryImpl implements EventRepository {
   Future<Event> createEvent(Map<String, dynamic> eventData) async {
     try {
       final response = await remoteDataSource.createEvent(eventData);
+      print('📦 Create event response: ${response['data']}');
       return Event.fromJson(response['data']);
     } catch (e) {
       print('❌ Create event error: $e');

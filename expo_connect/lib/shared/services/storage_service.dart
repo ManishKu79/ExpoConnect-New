@@ -13,7 +13,12 @@ class StorageService {
   }
 
   static Future<String?> getToken() async {
-    return await _secureStorage.read(key: _tokenKey);
+    try {
+      return await _secureStorage.read(key: _tokenKey);
+    } catch (e) {
+      // Web storage might throw errors
+      return null;
+    }
   }
 
   static Future<void> saveRefreshToken(String token) async {
@@ -21,7 +26,11 @@ class StorageService {
   }
 
   static Future<String?> getRefreshToken() async {
-    return await _secureStorage.read(key: _refreshTokenKey);
+    try {
+      return await _secureStorage.read(key: _refreshTokenKey);
+    } catch (e) {
+      return null;
+    }
   }
 
   static Future<void> clearTokens() async {

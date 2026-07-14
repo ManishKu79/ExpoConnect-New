@@ -5,20 +5,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import '../providers/event_provider.dart';
+import '../../domain/entities/event.dart';
 import '../../../../shared/services/storage_service.dart';
 import '../../../../core/constants/api_endpoints.dart';
 
-class CreateEventScreen extends ConsumerStatefulWidget {
-  const CreateEventScreen({super.key});
+class EditEventScreen extends ConsumerStatefulWidget {
+  final String eventId;
+
+  const EditEventScreen({super.key, required this.eventId});
 
   @override
-  ConsumerState<CreateEventScreen> createState() => _CreateEventScreenState();
+  ConsumerState<EditEventScreen> createState() => _EditEventScreenState();
 }
 
-class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
+class _EditEventScreenState extends ConsumerState<EditEventScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -29,15 +33,16 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
 
   DateTime? _startDate;
   DateTime? _endDate;
-  DateTime? _registrationDeadline;
   bool _isPublic = true;
   bool _isLoading = false;
   bool _isUploadingImage = false;
   List<String> _selectedCategories = [];
-  XFile? _bannerImage;
+  XFile? _newBannerImage;
+  String? _currentBannerUrl;
   String? _uploadedImageUrl;
   Uint8List? _imageBytes;
   String? _imageFileName;
+  Event? _event;
 
   final List<String> _availableCategories = [
     'Technology',
@@ -53,6 +58,41 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   ];
 
   final ImagePicker _imagePicker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEvent();
+  }
+
+  Future<void> _loadEvent() async {
+    try {
+      final repo = ref.read(eventRepositoryProvider);
+      final event = await repo.getEventById(widget.eventId);
+      setState(() {
+        _event = event;
+        _titleController.text = event.title;
+        _descriptionController.text = event.description;
+        _venueController.text = event.location ?? '';
+        _startDate = event.startDate;
+        _endDate = event.endDate;
+        _selectedCategories = event.categories;
+        _isPublic = event.isPublic;
+        _currentBannerUrl = event.banner;
+        _maxAttendeesController.text = event.maxAttendees?.toString() ?? '';
+        _ticketPriceController.text = event.ticketPrice?.toString() ?? '';
+      });
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading event: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -76,17 +116,15 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       
       if (image != null) {
         setState(() {
-          _bannerImage = image;
+          _newBannerImage = image;
           _imageFileName = image.name;
         });
         
-        // Read image bytes for web support
         final bytes = await image.readAsBytes();
         setState(() {
           _imageBytes = bytes;
         });
         
-        // Upload the image
         await _uploadBannerImage();
       }
     } catch (e) {
@@ -102,7 +140,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   }
 
   Future<void> _uploadBannerImage() async {
-    if (_bannerImage == null || _imageBytes == null) return;
+    if (_newBannerImage == null || _imageBytes == null) return;
 
     setState(() {
       _isUploadingImage = true;
@@ -110,11 +148,8 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
 
     try {
       final token = await StorageService.getToken();
-      if (token == null) {
-        throw Exception('Not authenticated');
-      }
+      if (token == null) throw Exception('Not authenticated');
 
-      // Create FormData for web and mobile compatibility
       final formData = FormData.fromMap({
         'banner': MultipartFile.fromBytes(
           _imageBytes!,
@@ -127,7 +162,6 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       dio.options.headers['Authorization'] = 'Bearer $token';
       dio.options.headers['Content-Type'] = 'multipart/form-data';
 
-      // Upload to backend
       final response = await dio.post(
         '${ApiEndpoints.baseUrl}/upload/banner',
         data: formData,
@@ -138,6 +172,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
         if (data['success'] == true) {
           setState(() {
             _uploadedImageUrl = data['data']['url'];
+            _currentBannerUrl = data['data']['url'];
           });
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -147,11 +182,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
               ),
             );
           }
-        } else {
-          throw Exception(data['message'] ?? 'Upload failed');
         }
-      } else {
-        throw Exception('Failed to upload image: ${response.statusCode}');
       }
     } catch (e) {
       print('❌ Image upload error: $e');
@@ -170,22 +201,8 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
     }
   }
 
-  Future<void> _createEvent() async {
+  Future<void> _updateEvent() async {
     if (!_formKey.currentState!.validate()) return;
-
-    if (_startDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select start date')),
-      );
-      return;
-    }
-
-    if (_endDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select end date')),
-      );
-      return;
-    }
 
     setState(() => _isLoading = true);
 
@@ -202,30 +219,30 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
         },
         'categories': _selectedCategories,
         'maxAttendees': int.tryParse(_maxAttendeesController.text) ?? 0,
-        'registrationDeadline': _registrationDeadline?.toIso8601String(),
         'ticketPrice': double.tryParse(_ticketPriceController.text) ?? 0.0,
         'isPublic': _isPublic,
-        'banner': _uploadedImageUrl ?? '',
+        'banner': _currentBannerUrl ?? '',
       };
 
       final repo = ref.read(eventRepositoryProvider);
-      await repo.createEvent(eventData);
+      await repo.updateEvent(widget.eventId, eventData);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Event created successfully! 🎉'),
+            content: Text('Event updated successfully! 🎉'),
             backgroundColor: Color(0xFF10B981),
           ),
         );
         ref.refresh(eventListProvider);
-        context.go('/');
+        ref.refresh(eventDetailProvider(widget.eventId));
+        context.go('/events/${widget.eventId}');
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error creating event: $e'),
+            content: Text('Error updating event: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -235,10 +252,64 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
     }
   }
 
+  Future<void> _deleteEvent() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Event'),
+        content: const Text('Are you sure you want to delete this event? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _isLoading = true);
+      try {
+        final repo = ref.read(eventRepositoryProvider);
+        await repo.deleteEvent(widget.eventId);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Event deleted successfully'),
+              backgroundColor: Color(0xFF10B981),
+            ),
+          );
+          ref.refresh(eventListProvider);
+          context.go('/my-events');
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error deleting event: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    }
+  }
+
   Future<void> _selectDate(BuildContext context, bool isStart) async {
     final date = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: _startDate ?? DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
@@ -270,11 +341,23 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    if (_event == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Event'),
+        title: const Text('Edit Event'),
         backgroundColor: isDark ? AppColors.grey900 : Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: _deleteEvent,
+            icon: const Icon(Icons.delete_outline, color: Colors.red),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -292,19 +375,15 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isDark ? AppColors.grey700 : AppColors.grey300,
-                    style: BorderStyle.solid,
                   ),
                 ),
-                child: _bannerImage != null && _imageBytes != null
+                child: _newBannerImage != null && _imageBytes != null
                     ? Stack(
                         fit: StackFit.expand,
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(16),
-                            child: Image.memory(
-                              _imageBytes!,
-                              fit: BoxFit.cover,
-                            ),
+                            child: Image.memory(_imageBytes!, fit: BoxFit.cover),
                           ),
                           if (_isUploadingImage)
                             Container(
@@ -316,17 +395,9 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    CircularProgressIndicator(
-                                      color: Colors.white,
-                                    ),
+                                    CircularProgressIndicator(color: Colors.white),
                                     SizedBox(height: 8),
-                                    Text(
-                                      'Uploading...',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                      ),
-                                    ),
+                                    Text('Uploading...', style: TextStyle(color: Colors.white)),
                                   ],
                                 ),
                               ),
@@ -337,92 +408,71 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                             child: IconButton(
                               onPressed: () {
                                 setState(() {
-                                  _bannerImage = null;
+                                  _newBannerImage = null;
                                   _imageBytes = null;
-                                  _uploadedImageUrl = null;
                                 });
                               },
                               style: IconButton.styleFrom(
                                 backgroundColor: Colors.black.withOpacity(0.5),
                               ),
-                              icon: const Icon(
-                                Icons.close,
-                                color: Colors.white,
-                              ),
+                              icon: const Icon(Icons.close, color: Colors.white),
                             ),
                           ),
-                          if (_uploadedImageUrl != null)
-                            Positioned(
-                              bottom: 8,
-                              right: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.9),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.check_circle,
-                                      color: Colors.white,
-                                      size: 16,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'Uploaded',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
                         ],
                       )
-                    : InkWell(
-                        onTap: _pickImage,
-                        borderRadius: BorderRadius.circular(16),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.cloud_upload_outlined,
-                              size: 48,
-                              color: isDark ? Colors.grey[500] : Colors.grey[400],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Tap to upload event banner',
-                              style: TextStyle(
-                                color: isDark ? Colors.grey[400] : Colors.grey[600],
-                                fontSize: 14,
+                    : _currentBannerUrl != null && _currentBannerUrl!.isNotEmpty
+                        ? Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: CachedNetworkImage(
+                                  imageUrl: _currentBannerUrl!,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => Container(
+                                    color: isDark ? AppColors.grey700 : AppColors.grey300,
+                                    child: const Center(child: CircularProgressIndicator()),
+                                  ),
+                                  errorWidget: (context, url, error) => Container(
+                                    color: isDark ? AppColors.grey700 : AppColors.grey300,
+                                    child: const Icon(Icons.broken_image, size: 50),
+                                  ),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Recommended: 1200x600px',
-                              style: TextStyle(
-                                color: isDark ? Colors.grey[600] : Colors.grey[400],
-                                fontSize: 12,
-                              ),
-                            ),
-                            if (_isUploadingImage) ...[
-                              const SizedBox(height: 8),
-                              const CircularProgressIndicator(
-                                strokeWidth: 2,
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: IconButton(
+                                  onPressed: _pickImage,
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: Colors.black.withOpacity(0.5),
+                                  ),
+                                  icon: const Icon(Icons.edit, color: Colors.white),
+                                ),
                               ),
                             ],
-                          ],
-                        ),
-                      ),
+                          )
+                        : InkWell(
+                            onTap: _pickImage,
+                            borderRadius: BorderRadius.circular(16),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.cloud_upload_outlined,
+                                  size: 48,
+                                  color: isDark ? Colors.grey[500] : Colors.grey[400],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Tap to upload event banner',
+                                  style: TextStyle(
+                                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
               ),
               const SizedBox(height: 16),
 
@@ -432,18 +482,11 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 decoration: InputDecoration(
                   labelText: 'Event Title *',
                   hintText: 'Enter event title',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   filled: true,
                   fillColor: isDark ? AppColors.grey800 : AppColors.grey50,
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter event title';
-                  }
-                  return null;
-                },
+                validator: (value) => (value == null || value.isEmpty) ? 'Please enter event title' : null,
               ),
               const SizedBox(height: 16),
 
@@ -453,19 +496,12 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 decoration: InputDecoration(
                   labelText: 'Description *',
                   hintText: 'Enter event description',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   filled: true,
                   fillColor: isDark ? AppColors.grey800 : AppColors.grey50,
                 ),
                 maxLines: 4,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter event description';
-                  }
-                  return null;
-                },
+                validator: (value) => (value == null || value.isEmpty) ? 'Please enter event description' : null,
               ),
               const SizedBox(height: 16),
 
@@ -477,9 +513,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                   decoration: BoxDecoration(
                     color: isDark ? AppColors.grey800 : AppColors.grey50,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isDark ? AppColors.grey700 : AppColors.grey200,
-                    ),
+                    border: Border.all(color: isDark ? AppColors.grey700 : AppColors.grey200),
                   ),
                   child: Row(
                     children: [
@@ -488,12 +522,10 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                       Expanded(
                         child: Text(
                           _startDate != null
-                              ? 'Start: ${_startDate!.day}/${_startDate!.month}/${_startDate!.year} ${_startDate!.hour}:${_startDate!.minute.toString().padLeft(2, '0')}'
-                              : 'Select Start Date & Time *',
+                              ? 'Start: ${_startDate!.day}/${_startDate!.month}/${_startDate!.year}'
+                              : 'Select Start Date *',
                           style: TextStyle(
-                            color: _startDate != null
-                                ? isDark ? Colors.white : Colors.black
-                                : Colors.grey[500],
+                            color: _startDate != null ? (isDark ? Colors.white : Colors.black) : Colors.grey[500],
                           ),
                         ),
                       ),
@@ -511,9 +543,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                   decoration: BoxDecoration(
                     color: isDark ? AppColors.grey800 : AppColors.grey50,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isDark ? AppColors.grey700 : AppColors.grey200,
-                    ),
+                    border: Border.all(color: isDark ? AppColors.grey700 : AppColors.grey200),
                   ),
                   child: Row(
                     children: [
@@ -522,12 +552,10 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                       Expanded(
                         child: Text(
                           _endDate != null
-                              ? 'End: ${_endDate!.day}/${_endDate!.month}/${_endDate!.year} ${_endDate!.hour}:${_endDate!.minute.toString().padLeft(2, '0')}'
-                              : 'Select End Date & Time *',
+                              ? 'End: ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
+                              : 'Select End Date *',
                           style: TextStyle(
-                            color: _endDate != null
-                                ? isDark ? Colors.white : Colors.black
-                                : Colors.grey[500],
+                            color: _endDate != null ? (isDark ? Colors.white : Colors.black) : Colors.grey[500],
                           ),
                         ),
                       ),
@@ -543,9 +571,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 decoration: InputDecoration(
                   labelText: 'Venue',
                   hintText: 'Enter venue name',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   filled: true,
                   fillColor: isDark ? AppColors.grey800 : AppColors.grey50,
                 ),
@@ -557,9 +583,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 decoration: InputDecoration(
                   labelText: 'City',
                   hintText: 'Enter city',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   filled: true,
                   fillColor: isDark ? AppColors.grey800 : AppColors.grey50,
                 ),
@@ -607,9 +631,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 decoration: InputDecoration(
                   labelText: 'Max Attendees',
                   hintText: 'Enter maximum attendees',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   filled: true,
                   fillColor: isDark ? AppColors.grey800 : AppColors.grey50,
                 ),
@@ -623,9 +645,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 decoration: InputDecoration(
                   labelText: 'Ticket Price (USD)',
                   hintText: 'Enter ticket price',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   filled: true,
                   fillColor: isDark ? AppColors.grey800 : AppColors.grey50,
                   prefixText: '\$ ',
@@ -639,20 +659,16 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 title: const Text('Make Event Public'),
                 subtitle: const Text('Public events are visible to everyone'),
                 value: _isPublic,
-                onChanged: (value) {
-                  setState(() {
-                    _isPublic = value;
-                  });
-                },
+                onChanged: (value) => setState(() => _isPublic = value),
                 activeColor: const Color(0xFF2563EB),
                 contentPadding: EdgeInsets.zero,
               ),
               const SizedBox(height: 24),
 
-              // Create Button
+              // Update Button
               CustomButton(
-                onPressed: _isLoading ? null : _createEvent,
-                text: 'Create Event',
+                onPressed: _isLoading ? null : _updateEvent,
+                text: 'Update Event',
                 isLoading: _isLoading,
               ),
               const SizedBox(height: 16),

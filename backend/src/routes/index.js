@@ -16,6 +16,7 @@ const voiceNoteRoutes = require('./voiceNoteRoutes');
 const documentRoutes = require('./documentRoutes');
 const marketplaceRoutes = require('./marketplaceRoutes');
 const aiRoutes = require('./aiRoutes');
+const uploadRoutes = require('./uploadRoutes');
 
 // Health check
 router.get('/health', (req, res) => {
@@ -37,5 +38,6 @@ router.use('/voice-notes', voiceNoteRoutes);
 router.use('/documents', documentRoutes);
 router.use('/marketplace', marketplaceRoutes);
 router.use('/ai', aiRoutes);
+router.use('/upload', uploadRoutes);
 
 module.exports = router;
