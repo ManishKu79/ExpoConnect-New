@@ -44,6 +44,7 @@ class EventRepositoryImpl implements EventRepository {
   Future<void> registerForEvent(String eventId) async {
     try {
       await remoteDataSource.registerForEvent(eventId);
+      print('✅ Repository: User registered for event');
     } catch (e) {
       print('❌ Register for event error: $e');
       rethrow;
@@ -64,6 +65,7 @@ class EventRepositoryImpl implements EventRepository {
   Future<Map<String, dynamic>> checkRegistrationStatus(String eventId) async {
     try {
       final response = await remoteDataSource.checkRegistrationStatus(eventId);
+      print('✅ Repository: Registration status checked');
       return response['data'];
     } catch (e) {
       print('❌ Check registration status error: $e');
@@ -76,6 +78,7 @@ class EventRepositoryImpl implements EventRepository {
     try {
       final response = await remoteDataSource.getMyRegisteredEvents();
       final data = response['data'] as List? ?? [];
+      print('✅ Repository: Found ${data.length} registered events');
       return data.map((json) => Event.fromJson(json)).toList();
     } catch (e) {
       print('❌ Get registered events error: $e');
@@ -86,11 +89,23 @@ class EventRepositoryImpl implements EventRepository {
   @override
   Future<Map<String, dynamic>> getEntryQR(String eventId) async {
     try {
+      print('🔍 Repository: Getting entry QR for event: $eventId');
       final response = await remoteDataSource.getEntryQR(eventId);
-      return {
-        'qrCode': response['data']['qrCode'],
-        'eventTitle': response['data']['eventTitle'],
+      print('📝 Repository: Raw response: $response');
+      
+      // Check if response has data
+      if (response['data'] == null) {
+        print('❌ Repository: No data in response');
+        throw Exception('No data received from server');
+      }
+      
+      final result = {
+        'qrCode': response['data']['qrCode'] ?? '',
+        'eventTitle': response['data']['eventTitle'] ?? 'Event',
       };
+      
+      print('✅ Repository: QR data extracted successfully');
+      return result;
     } catch (e) {
       print('❌ Get entry QR error: $e');
       rethrow;

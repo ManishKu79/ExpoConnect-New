@@ -51,6 +51,7 @@ exports.createEvent = async (req, res, next) => {
       organizer: req.user._id,
       status: 'published',
       registeredUsers: [],
+      registeredCount: 0,
     });
 
     console.log('✅ Event created:', event._id);
@@ -224,17 +225,31 @@ exports.getMyEvents = async (req, res, next) => {
 // ============ REGISTER FOR EVENT ============
 exports.registerForEvent = async (req, res, next) => {
   try {
-    const event = await Event.findById(req.params.id);
+    console.log('🔵 ===== REGISTER FOR EVENT STARTED =====');
+    
+    const eventId = req.params.id;
+    const userId = req.user._id;
+    const userIdString = userId.toString();
+
+    console.log('📝 Event ID:', eventId);
+    console.log('📝 User ID:', userIdString);
+    console.log('📝 User Email:', req.user.email);
+
+    const event = await Event.findById(eventId);
     if (!event) {
+      console.log('❌ Event not found');
       return res.status(404).json({
         success: false,
         message: 'Event not found',
       });
     }
 
-    const userId = req.user._id.toString();
+    console.log('📝 Event found:', event.title);
+    console.log('📝 Current registered users:', event.registeredUsers);
+    console.log('📝 Current registered count:', event.registeredCount);
 
-    if (event.registeredUsers && event.registeredUsers.includes(userId)) {
+    if (event.registeredUsers && event.registeredUsers.some(id => id.toString() === userIdString)) {
+      console.log('⚠️ User already registered');
       return res.status(400).json({
         success: false,
         message: 'You are already registered for this event',
@@ -243,12 +258,20 @@ exports.registerForEvent = async (req, res, next) => {
 
     if (!event.registeredUsers) {
       event.registeredUsers = [];
+      console.log('📝 Initialized registeredUsers array');
     }
+
     event.registeredUsers.push(userId);
     event.registeredCount = (event.registeredCount || 0) + 1;
     await event.save();
 
-    console.log(`✅ User ${userId} registered for event ${event._id}`);
+    console.log('✅ User registered successfully!');
+    console.log('📝 Updated registered users:', event.registeredUsers);
+    console.log('📝 Total registered count:', event.registeredCount);
+
+    const verifyEvent = await Event.findById(eventId);
+    console.log('📝 Verification - registered users:', verifyEvent.registeredUsers);
+    console.log('📝 Verification - registered count:', verifyEvent.registeredCount);
 
     res.status(200).json({
       success: true,
@@ -257,10 +280,12 @@ exports.registerForEvent = async (req, res, next) => {
         eventId: event._id,
         eventTitle: event.title,
         registered: true,
+        registeredCount: event.registeredCount,
       },
     });
   } catch (error) {
     console.error('❌ Register for event error:', error);
+    console.error('❌ Error stack:', error.stack);
     next(error);
   }
 };
@@ -278,18 +303,16 @@ exports.unregisterFromEvent = async (req, res, next) => {
 
     const userId = req.user._id.toString();
 
-    if (!event.registeredUsers || !event.registeredUsers.includes(userId)) {
+    if (!event.registeredUsers || !event.registeredUsers.some(id => id.toString() === userId)) {
       return res.status(400).json({
         success: false,
         message: 'You are not registered for this event',
       });
     }
 
-    event.registeredUsers = event.registeredUsers.filter(id => id !== userId);
+    event.registeredUsers = event.registeredUsers.filter(id => id.toString() !== userId);
     event.registeredCount = Math.max(0, (event.registeredCount || 0) - 1);
     await event.save();
-
-    console.log(`✅ User ${userId} unregistered from event ${event._id}`);
 
     res.status(200).json({
       success: true,
@@ -301,35 +324,92 @@ exports.unregisterFromEvent = async (req, res, next) => {
   }
 };
 
-// ============ GENERATE ENTRY QR CODE ============
-exports.generateEntryQR = async (req, res, next) => {
+// ============ CHECK REGISTRATION STATUS ============
+exports.checkRegistrationStatus = async (req, res, next) => {
   try {
     const { eventId } = req.params;
-    const userId = req.user._id;
+    const userId = req.user._id.toString();
+
+    console.log('🔍 ===== CHECKING REGISTRATION STATUS =====');
+    console.log('📝 User ID:', userId);
+    console.log('📝 Event ID:', eventId);
 
     const event = await Event.findById(eventId);
     if (!event) {
+      console.log('❌ Event not found');
       return res.status(404).json({
         success: false,
         message: 'Event not found',
       });
     }
 
-    if (!event.registeredUsers || !event.registeredUsers.includes(userId.toString())) {
-      return res.status(403).json({
+    console.log('📝 Event found:', event.title);
+    console.log('📝 Registered users:', event.registeredUsers);
+
+    const isRegistered = event.registeredUsers && event.registeredUsers.some(id => id.toString() === userId);
+
+    console.log('📝 Is registered:', isRegistered);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        isRegistered: isRegistered,
+        eventId: event._id,
+        eventTitle: event.title,
+        registeredCount: event.registeredCount,
+      },
+    });
+  } catch (error) {
+    console.error('❌ Check registration error:', error);
+    next(error);
+  }
+};
+
+// ============ GENERATE ENTRY QR CODE ============
+exports.generateEntryQR = async (req, res, next) => {
+  try {
+    const { eventId } = req.params;
+    const userId = req.user._id;
+    const userIdString = userId.toString();
+
+    console.log('🔍 ===== GENERATING QR CODE =====');
+    console.log('📝 User ID:', userIdString);
+    console.log('📝 Event ID:', eventId);
+
+    const event = await Event.findById(eventId);
+    if (!event) {
+      console.log('❌ Event not found for ID:', eventId);
+      return res.status(404).json({
         success: false,
-        message: 'You are not registered for this event',
+        message: 'Event not found. Please make sure the event exists.',
       });
     }
+
+    console.log('📝 Event found:', event.title);
+    console.log('📝 Registered users:', event.registeredUsers);
+
+    const isRegistered = event.registeredUsers && event.registeredUsers.some(id => id.toString() === userIdString);
+    
+    if (!isRegistered) {
+      console.log('❌ User not registered for this event');
+      return res.status(403).json({
+        success: false,
+        message: 'You are not registered for this event. Please register first.',
+      });
+    }
+
+    console.log('✅ User is registered, generating QR...');
 
     const qrData = JSON.stringify({
       type: 'event_entry',
       eventId: event._id.toString(),
-      userId: userId.toString(),
+      userId: userIdString,
       eventTitle: event.title,
       userName: `${req.user.firstName} ${req.user.lastName}`,
       timestamp: Date.now(),
     });
+
+    console.log('📝 QR Data:', qrData);
 
     const qrCode = await QRCode.toDataURL(qrData, {
       errorCorrectionLevel: 'H',
@@ -341,6 +421,9 @@ exports.generateEntryQR = async (req, res, next) => {
       },
     });
 
+    console.log('✅ QR code generated successfully');
+    console.log('📝 QR Code length:', qrCode.length);
+
     res.status(200).json({
       success: true,
       message: 'QR code generated successfully',
@@ -349,11 +432,17 @@ exports.generateEntryQR = async (req, res, next) => {
         eventId: event._id,
         eventTitle: event.title,
         userName: `${req.user.firstName} ${req.user.lastName}`,
+        registeredCount: event.registeredCount,
       },
     });
   } catch (error) {
     console.error('❌ Generate QR error:', error);
-    next(error);
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate QR code',
+      error: error.message,
+    });
   }
 };
 
@@ -402,7 +491,7 @@ exports.verifyEntryQR = async (req, res, next) => {
       });
     }
 
-    if (!event.registeredUsers || !event.registeredUsers.includes(data.userId)) {
+    if (!event.registeredUsers || !event.registeredUsers.some(id => id.toString() === data.userId)) {
       return res.status(403).json({
         success: false,
         message: 'User is not registered for this event',
@@ -450,9 +539,17 @@ exports.getMyRegisteredEvents = async (req, res, next) => {
   try {
     const userId = req.user._id.toString();
     
+    console.log('🔍 ===== GETTING MY REGISTERED EVENTS =====');
+    console.log('📝 User ID:', userId);
+
     const events = await Event.find({
       registeredUsers: { $in: [userId] }
     }).populate('organizer', 'firstName lastName email');
+
+    console.log('📝 Found', events.length, 'registered events');
+    if (events.length > 0) {
+      console.log('📝 Event titles:', events.map(e => e.title).join(', '));
+    }
 
     res.status(200).json({
       success: true,
@@ -460,36 +557,6 @@ exports.getMyRegisteredEvents = async (req, res, next) => {
     });
   } catch (error) {
     console.error('❌ Get registered events error:', error);
-    next(error);
-  }
-};
-
-// ============ CHECK REGISTRATION STATUS ============
-exports.checkRegistrationStatus = async (req, res, next) => {
-  try {
-    const { eventId } = req.params;
-    const userId = req.user._id.toString();
-
-    const event = await Event.findById(eventId);
-    if (!event) {
-      return res.status(404).json({
-        success: false,
-        message: 'Event not found',
-      });
-    }
-
-    const isRegistered = event.registeredUsers && event.registeredUsers.includes(userId);
-
-    res.status(200).json({
-      success: true,
-      data: {
-        isRegistered: isRegistered,
-        eventId: event._id,
-        eventTitle: event.title,
-      },
-    });
-  } catch (error) {
-    console.error('❌ Check registration error:', error);
     next(error);
   }
 };

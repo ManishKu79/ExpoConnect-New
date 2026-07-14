@@ -19,6 +19,10 @@ class _MyRegisteredEventsScreenState extends ConsumerState<MyRegisteredEventsScr
   @override
   void initState() {
     super.initState();
+    _loadEvents();
+  }
+
+  void _loadEvents() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(myRegisteredEventsProvider.notifier).loadRegisteredEvents();
     });
@@ -34,6 +38,12 @@ class _MyRegisteredEventsScreenState extends ConsumerState<MyRegisteredEventsScr
         title: const Text('My Events'),
         backgroundColor: isDark ? AppColors.grey900 : Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadEvents,
+          ),
+        ],
       ),
       body: eventsState.when(
         loading: () => const LoadingWidget(),
@@ -49,9 +59,7 @@ class _MyRegisteredEventsScreenState extends ConsumerState<MyRegisteredEventsScr
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () {
-                  ref.read(myRegisteredEventsProvider.notifier).loadRegisteredEvents();
-                },
+                onPressed: _loadEvents,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2563EB),
                   foregroundColor: Colors.white,
@@ -62,11 +70,28 @@ class _MyRegisteredEventsScreenState extends ConsumerState<MyRegisteredEventsScr
           ),
         ),
         data: (events) {
+          print('📝 Found ${events.length} registered events');
+          
           if (events.isEmpty) {
-            return const EmptyStateWidget(
-              title: 'No Registered Events',
-              message: 'You haven\'t registered for any events yet. Browse events and register now!',
-              icon: Icons.event_busy,
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const EmptyStateWidget(
+                  title: 'No Registered Events',
+                  message: 'You haven\'t registered for any events yet.\nBrowse events and register now!',
+                  icon: Icons.event_busy,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => context.go('/events'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  ),
+                  child: const Text('Browse Events'),
+                ),
+              ],
             );
           }
 
@@ -225,7 +250,7 @@ class _RegisteredEventCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              'Entry QR',
+                              'View QR',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,

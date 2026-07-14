@@ -3,43 +3,36 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../events/presentation/providers/event_provider.dart';
+import '../../../events/domain/entities/event.dart';
 
-class ExhibitorHomeScreen extends ConsumerWidget {
+class ExhibitorHomeScreen extends ConsumerStatefulWidget {
   const ExhibitorHomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ExhibitorHomeScreen> createState() => _ExhibitorHomeScreenState();
+}
+
+class _ExhibitorHomeScreenState extends ConsumerState<ExhibitorHomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(eventListProvider.notifier).refresh();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
+    final eventsState = ref.watch(eventListProvider);
     final user = authState.user;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Filter events where user is exhibitor
+    final myEvents = eventsState.where((e) => e.organizerId == user?.id).toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Exhibitor Dashboard'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: () => context.go('/profile'),
-            icon: CircleAvatar(
-              radius: 18,
-              backgroundImage: user?.profilePicture != null
-                  ? NetworkImage(user!.profilePicture!)
-                  : null,
-              backgroundColor: Colors.grey[300],
-              child: user?.profilePicture == null
-                  ? Text(
-                      user?.initials ?? 'E',
-                      style: TextStyle(
-                        color: Colors.grey[700],
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    )
-                  : null,
-            ),
-          ),
-        ],
-      ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -56,7 +49,7 @@ class ExhibitorHomeScreen extends ConsumerWidget {
             children: [
               // Header
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
                 child: Row(
                   children: [
                     Expanded(
@@ -66,7 +59,7 @@ class ExhibitorHomeScreen extends ConsumerWidget {
                           Text(
                             'Welcome back, ${user?.firstName ?? 'Exhibitor'} 🚀',
                             style: const TextStyle(
-                              fontSize: 22,
+                              fontSize: 24,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
@@ -114,9 +107,9 @@ class ExhibitorHomeScreen extends ConsumerWidget {
               // Main Content
               Expanded(
                 child: Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.only(
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.grey900 : const Color(0xFFF1F5F9),
+                    borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(30),
                       topRight: Radius.circular(30),
                     ),
@@ -161,13 +154,14 @@ class ExhibitorHomeScreen extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: 24),
-                        // Quick Actions
+
+                        // Quick Actions - INCLUDES QR SCANNER FOR EXHIBITOR
                         Text(
                           'Quick Actions',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFF0F172A),
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -190,16 +184,19 @@ class ExhibitorHomeScreen extends ConsumerWidget {
                             ),
                             _ActionCard(
                               icon: Icons.qr_code_scanner,
-                              label: 'Scan',
+                              label: 'Scan Visitor',
                               color: const Color(0xFF7C3AED),
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF7C3AED), Color(0xFF06B6D4)],
                               ),
-                              onTap: () {},
+                              onTap: () {
+                                // Navigate to QR Scanner - Exhibitor can scan visitor QR
+                                context.go('/qr-scanner');
+                              },
                             ),
                             _ActionCard(
                               icon: Icons.storefront,
-                              label: 'Stall',
+                              label: 'My Stall',
                               color: const Color(0xFF06B6D4),
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF06B6D4), Color(0xFF2563EB)],
@@ -209,6 +206,7 @@ class ExhibitorHomeScreen extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: 24),
+
                         // Recent Leads
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -218,12 +216,18 @@ class ExhibitorHomeScreen extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: const Color(0xFF0F172A),
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
                               ),
                             ),
                             TextButton(
                               onPressed: () {},
-                              child: const Text('See All'),
+                              child: const Text(
+                                'See All',
+                                style: TextStyle(
+                                  color: Color(0xFF2563EB),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -268,13 +272,15 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppColors.grey800 : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -297,17 +303,17 @@ class _StatCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF0F172A),
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
               ),
             ),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: Color(0xFF64748B),
+                color: isDark ? Colors.grey[400] : const Color(0xFF64748B),
               ),
             ),
           ],
@@ -384,6 +390,8 @@ class _LeadCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     Color getInterestColor() {
       switch (interest) {
         case 'High':
@@ -401,7 +409,7 @@ class _LeadCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.grey800 : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -440,17 +448,17 @@ class _LeadCard extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF0F172A),
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
                   ),
                 ),
                 Text(
                   company,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey[500],
+                    color: isDark ? Colors.grey[400] : Colors.grey[500],
                   ),
                 ),
               ],
@@ -479,7 +487,7 @@ class _LeadCard extends StatelessWidget {
                 timestamp,
                 style: TextStyle(
                   fontSize: 10,
-                  color: Colors.grey[400],
+                  color: isDark ? Colors.grey[500] : Colors.grey[400],
                 ),
               ),
             ],

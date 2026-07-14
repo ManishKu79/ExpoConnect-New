@@ -124,9 +124,15 @@ class MyRegisteredEventsNotifier extends StateNotifier<AsyncValue<List<Event>>> 
     state = const AsyncValue.loading();
     try {
       final events = await repository.getMyRegisteredEvents();
+      print('📝 Loaded ${events.length} registered events');
       state = AsyncValue.data(events);
     } catch (e) {
+      print('❌ Load registered events error: $e');
       state = AsyncValue.error(e, StackTrace.current);
     }
+  }
+
+  void refresh() {
+    loadRegisteredEvents();
   }
 }

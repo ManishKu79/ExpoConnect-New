@@ -20,6 +20,7 @@ class EventDetailScreen extends ConsumerStatefulWidget {
 class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   bool _isRegistered = false;
   bool _isLoadingRegistration = false;
+  bool _isCheckingRegistration = true;
 
   @override
   void initState() {
@@ -28,16 +29,26 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   }
 
   Future<void> _checkRegistration() async {
+    setState(() {
+      _isCheckingRegistration = true;
+    });
     try {
       final repo = ref.read(eventRepositoryProvider);
       final status = await repo.checkRegistrationStatus(widget.eventId);
       if (mounted) {
         setState(() {
           _isRegistered = status['isRegistered'] ?? false;
+          _isCheckingRegistration = false;
         });
+        print('📝 Registration status: ${_isRegistered ? 'Registered' : 'Not registered'}');
       }
     } catch (e) {
       print('❌ Check registration error: $e');
+      if (mounted) {
+        setState(() {
+          _isCheckingRegistration = false;
+        });
+      }
     }
   }
 
@@ -75,7 +86,6 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
         data: (event) {
           return CustomScrollView(
             slivers: [
-              // App Bar with Image
               SliverAppBar(
                 expandedHeight: 300,
                 pinned: true,
@@ -143,8 +153,6 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                         ),
                 ),
               ),
-
-              // Event Details
               SliverToBoxAdapter(
                 child: Container(
                   padding: const EdgeInsets.all(20),
@@ -158,7 +166,6 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Status Badge
                       Row(
                         children: [
                           Container(
@@ -221,8 +228,6 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-
-                      // Title
                       Text(
                         event.title,
                         style: TextStyle(
@@ -232,8 +237,6 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-
-                      // Description
                       Text(
                         event.description,
                         style: TextStyle(
@@ -243,8 +246,6 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-
-                      // Info Cards
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -289,7 +290,6 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Registration Status - SHOW QR BUTTON IF REGISTERED
                       if (_isRegistered)
                         Container(
                           padding: const EdgeInsets.all(16),
@@ -332,7 +332,6 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                               ),
                               ElevatedButton.icon(
                                 onPressed: () {
-                                  // Navigate to QR Code screen
                                   context.go('/event-entry/${event.id}');
                                 },
                                 icon: const Icon(Icons.qr_code, size: 18),
@@ -354,8 +353,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                         ),
                       const SizedBox(height: 16),
 
-                      // Register Button - Only show if NOT registered
-                      if (!_isRegistered)
+                      if (!_isRegistered && !_isCheckingRegistration)
                         CustomButton(
                           onPressed: registrationState || _isLoadingRegistration
                               ? null
@@ -366,7 +364,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                                   try {
                                     final repo = ref.read(eventRepositoryProvider);
                                     await repo.registerForEvent(event.id);
-                                    // Refresh registration status
+                                    await Future.delayed(const Duration(milliseconds: 500));
                                     final status = await repo.checkRegistrationStatus(widget.eventId);
                                     if (mounted) {
                                       setState(() {
@@ -398,10 +396,41 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                           text: 'Register for Event',
                           isLoading: registrationState || _isLoadingRegistration,
                         ),
+
+                      if (_isCheckingRegistration)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+
                       const SizedBox(height: 16),
 
-                      // Categories
+                      // Event ID for debugging
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.info_outline, size: 14, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Event ID: ${event.id}',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
                       if (event.categories.isNotEmpty) ...[
+                        const SizedBox(height: 16),
                         const Text(
                           'Categories',
                           style: TextStyle(

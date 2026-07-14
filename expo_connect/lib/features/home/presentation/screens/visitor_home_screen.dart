@@ -169,8 +169,8 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: _StatCard(
-                                icon: Icons.business_center,
-                                label: 'My Events',
+                                icon: Icons.qr_code,
+                                label: 'My QR',
                                 value: '0',
                                 color: const Color(0xFF7C3AED),
                                 onTap: () => context.go('/my-events'),
@@ -190,7 +190,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Quick Actions - FIXED QR SCANNER
+                        // Quick Actions - REMOVED QR SCANNER FOR VISITOR
                         Text(
                           'Quick Actions',
                           style: TextStyle(
@@ -209,20 +209,19 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                           childAspectRatio: 0.9,
                           children: [
                             _ActionCard(
-                              icon: Icons.qr_code_scanner,
-                              label: 'Scan QR',
+                              icon: Icons.event,
+                              label: 'Browse Events',
                               color: const Color(0xFF2563EB),
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
                               ),
                               onTap: () {
-                                // Navigate to QR Scanner
-                                context.go('/qr-scanner');
+                                context.go('/events');
                               },
                             ),
                             _ActionCard(
-                              icon: Icons.calendar_today,
-                              label: 'My Events',
+                              icon: Icons.qr_code,
+                              label: 'My QR Code',
                               color: const Color(0xFF7C3AED),
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF7C3AED), Color(0xFF06B6D4)],

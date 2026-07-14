@@ -67,6 +67,7 @@ const EventSchema = new mongoose.Schema({
   registeredUsers: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
+    default: [],
   }],
   createdAt: {
     type: Date,
@@ -80,5 +81,15 @@ EventSchema.index({ startDate: 1, endDate: 1 });
 EventSchema.index({ organizer: 1 });
 EventSchema.index({ status: 1 });
 EventSchema.index({ registeredUsers: 1 });
+
+// Add toJSON transform
+EventSchema.set('toJSON', {
+  transform: (doc, ret) => {
+    ret.id = ret._id.toString();
+    delete ret._id;
+    delete ret.__v;
+    return ret;
+  }
+});
 
 module.exports = mongoose.model('Event', EventSchema);

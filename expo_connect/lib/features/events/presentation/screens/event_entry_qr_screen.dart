@@ -35,14 +35,36 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
     });
 
     try {
+      print('🔍 Loading QR code for event: ${widget.eventId}');
+      
       final repo = ref.read(eventRepositoryProvider);
       final qrData = await repo.getEntryQR(widget.eventId);
+      
+      print('📝 QR Data received: $qrData');
+      
+      if (qrData == null) {
+        throw Exception('No data received from server');
+      }
+      
+      final qrCode = qrData['qrCode'];
+      final eventTitle = qrData['eventTitle'];
+      
+      print('📝 QR Code present: ${qrCode != null ? 'Yes (length: ${qrCode.length})' : 'No'}');
+      print('📝 Event Title: $eventTitle');
+      
+      if (qrCode == null || qrCode.isEmpty) {
+        throw Exception('QR code is empty or null');
+      }
+      
       setState(() {
-        _qrCode = qrData['qrCode'];
-        _eventTitle = qrData['eventTitle'];
+        _qrCode = qrCode;
+        _eventTitle = eventTitle ?? 'Event';
         _isLoading = false;
       });
+      
+      print('✅ QR Code loaded successfully');
     } catch (e) {
+      print('❌ Load QR error: $e');
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -59,6 +81,12 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
         title: const Text('Event Entry QR'),
         backgroundColor: isDark ? AppColors.grey900 : Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadQRCode,
+          ),
+        ],
       ),
       body: _isLoading
           ? const LoadingWidget()
@@ -76,10 +104,28 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
+                          'Failed to load QR Code',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
                           _error!,
                           style: TextStyle(
-                            fontSize: 16,
-                            color: isDark ? Colors.white : Colors.black,
+                            fontSize: 14,
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Make sure you are registered for this event.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -104,7 +150,7 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
                       child: Column(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(24),
                             decoration: BoxDecoration(
                               color: isDark ? AppColors.grey800 : Colors.white,
                               borderRadius: BorderRadius.circular(16),
@@ -121,13 +167,13 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
                                 const Icon(
                                   Icons.check_circle,
                                   color: Colors.green,
-                                  size: 40,
+                                  size: 48,
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 12),
                                 Text(
                                   'You are registered!',
                                   style: TextStyle(
-                                    fontSize: 20,
+                                    fontSize: 22,
                                     fontWeight: FontWeight.bold,
                                     color: isDark ? Colors.white : const Color(0xFF0F172A),
                                   ),
@@ -139,12 +185,34 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
                                     color: isDark ? Colors.grey[400] : Colors.grey[600],
                                   ),
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Text(
+                                    '✓ REGISTERED',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.green,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
                                 Container(
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isDark ? AppColors.grey700 : AppColors.grey200,
+                                    ),
                                   ),
                                   child: Image.memory(
                                     base64Decode(_qrCode!.split(',')[1]),
@@ -153,30 +221,34 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
                                     fit: BoxFit.contain,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 20),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 16,
-                                    vertical: 8,
+                                    vertical: 12,
                                   ),
                                   decoration: BoxDecoration(
                                     color: Colors.orange.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.orange.withOpacity(0.2),
+                                    ),
                                   ),
                                   child: Row(
-                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(
                                         Icons.info_outline,
-                                        size: 16,
+                                        size: 20,
                                         color: Colors.orange[700],
                                       ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Show this QR at the event entrance',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.orange[700],
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'Show this QR code at the event entrance for check-in',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.orange[700],
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -206,8 +278,39 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
                         ],
                       ),
                     )
-                  : const Center(
-                      child: Text('No QR code available'),
+                  : Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.qr_code,
+                            size: 80,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No QR Code Available',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Please register for the event first.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDark ? Colors.grey[400] : Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          CustomButton(
+                            onPressed: () => context.go('/events'),
+                            text: 'Browse Events',
+                          ),
+                        ],
+                      ),
                     ),
     );
   }

@@ -137,14 +137,14 @@ class _OrganizerHomeScreenState extends ConsumerState<OrganizerHomeScreen> {
                                 label: 'My Events',
                                 value: myEvents.length.toString(),
                                 color: const Color(0xFF2563EB),
-                                onTap: () {},
+                                onTap: () => context.go('/my-events'),
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: _StatCard(
                                 icon: Icons.people,
-                                label: 'Total Attendees',
+                                label: 'Attendees',
                                 value: '0',
                                 color: const Color(0xFF7C3AED),
                                 onTap: () {},
@@ -153,11 +153,11 @@ class _OrganizerHomeScreenState extends ConsumerState<OrganizerHomeScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: _StatCard(
-                                icon: Icons.trending_up,
-                                label: 'Revenue',
-                                value: '\$0',
+                                icon: Icons.qr_code_scanner,
+                                label: 'Scan QR',
+                                value: 'Scan',
                                 color: const Color(0xFF06B6D4),
-                                onTap: () {},
+                                onTap: () => context.go('/qr-scanner'),
                               ),
                             ),
                           ],
@@ -183,7 +183,7 @@ class _OrganizerHomeScreenState extends ConsumerState<OrganizerHomeScreen> {
                           childAspectRatio: 0.9,
                           children: [
                             _ActionCard(
-                              icon: Icons.add_circle,
+                              icon: Icons.add_circle,  // Changed from Icons.add_event
                               label: 'Create Event',
                               color: const Color(0xFF2563EB),
                               gradient: const LinearGradient(
@@ -192,22 +192,22 @@ class _OrganizerHomeScreenState extends ConsumerState<OrganizerHomeScreen> {
                               onTap: () => context.go('/create-event'),
                             ),
                             _ActionCard(
-                              icon: Icons.event,
-                              label: 'My Events',
+                              icon: Icons.qr_code_scanner,
+                              label: 'Scan QR',
                               color: const Color(0xFF7C3AED),
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF7C3AED), Color(0xFF06B6D4)],
                               ),
-                              onTap: () => context.go('/my-events'),
+                              onTap: () => context.go('/qr-scanner'),
                             ),
                             _ActionCard(
-                              icon: Icons.qr_code_scanner,
-                              label: 'Scan QR',
+                              icon: Icons.event,
+                              label: 'My Events',
                               color: const Color(0xFF06B6D4),
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF06B6D4), Color(0xFF2563EB)],
                               ),
-                              onTap: () {},
+                              onTap: () => context.go('/my-events'),
                             ),
                           ],
                         ),
@@ -484,34 +484,27 @@ class _OrganizerEventCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: event.status == 'published' || event.status == 'ongoing'
-                              ? Colors.green.withOpacity(0.1)
-                              : Colors.orange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+                      Icon(Icons.location_on, size: 12, color: isDark ? Colors.grey[400] : Colors.grey[500]),
+                      const SizedBox(width: 4),
+                      Text(
+                        event.location ?? 'Online',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.grey[400] : Colors.grey[500],
                         ),
-                        child: Text(
-                          event.status.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: event.status == 'published' || event.status == 'ongoing'
-                                ? Colors.green
-                                : Colors.orange,
-                          ),
-                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        color: const Color(0xFF2563EB),
+                        onPressed: () {
+                          context.go('/edit-event/${event.id}');
+                        },
                       ),
                     ],
                   ),
                 ],
               ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: isDark ? Colors.grey[400] : Colors.grey[400],
             ),
           ],
         ),
