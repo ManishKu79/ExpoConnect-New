@@ -89,8 +89,9 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hasQrCode = _qrCode != null && _qrCode!.isNotEmpty;
 
-    print('🔍 Building QR Screen - isLoading: $_isLoading, qrCode: ${_qrCode != null ? "Present" : "NULL"}');
+    print('🔍 Building QR Screen - isLoading: $_isLoading, hasQrCode: $hasQrCode');
 
     return Scaffold(
       appBar: AppBar(
@@ -160,7 +161,7 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
                     ),
                   ),
                 )
-              : _qrCode != null && _qrCode.isNotEmpty
+              : hasQrCode
                   ? SingleChildScrollView(
                       padding: const EdgeInsets.all(24),
                       child: Column(

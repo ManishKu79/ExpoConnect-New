@@ -32,9 +32,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authStateProvider);
     final authNotifier = ref.read(authStateProvider.notifier);
 
-    // Navigate to home if already authenticated
+    // Redirect to home if already authenticated
     if (authState.isAuthenticated) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        print('🔵 Already authenticated, redirecting to home');
         context.go('/');
       });
     }
@@ -80,6 +81,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
+                  
                   // Welcome Text
                   Text(
                     'Welcome Back!',
@@ -97,6 +99,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
+                  
                   Text(
                     'Sign in to continue your expo journey',
                     style: TextStyle(
@@ -105,6 +108,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 40),
+                  
                   // Login Card
                   Container(
                     padding: const EdgeInsets.all(24),
@@ -133,6 +137,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             keyboardType: TextInputType.emailAddress,
                           ),
                           const SizedBox(height: 16),
+                          
                           // Password Field
                           CustomTextField(
                             controller: _passwordController,
@@ -156,6 +161,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             validator: Validators.validatePassword,
                           ),
                           const SizedBox(height: 8),
+                          
                           // Forgot Password
                           Align(
                             alignment: Alignment.centerRight,
@@ -173,6 +179,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                           const SizedBox(height: 16),
+                          
                           // Error Message
                           if (authState.error != null)
                             Container(
@@ -202,6 +209,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ),
                           const SizedBox(height: 16),
+                          
                           // Login Button
                           CustomButton(
                             onPressed: authState.isLoading
@@ -209,16 +217,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 : () async {
                                     if (_formKey.currentState?.validate() ??
                                         false) {
+                                      print('🔵 Attempting login...');
                                       await authNotifier.login(
                                         _emailController.text.trim(),
                                         _passwordController.text.trim(),
                                       );
+                                      // Navigation will happen via the postFrameCallback
                                     }
                                   },
                             text: 'Sign In',
                             isLoading: authState.isLoading,
                           ),
                           const SizedBox(height: 16),
+                          
                           // Register Link
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,

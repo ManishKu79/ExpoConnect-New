@@ -164,7 +164,7 @@ class _OrganizerHomeScreenState extends ConsumerState<OrganizerHomeScreen> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Quick Actions
+                        // Quick Actions - Added Analytics
                         Text(
                           'Quick Actions',
                           style: TextStyle(
@@ -183,7 +183,7 @@ class _OrganizerHomeScreenState extends ConsumerState<OrganizerHomeScreen> {
                           childAspectRatio: 0.9,
                           children: [
                             _ActionCard(
-                              icon: Icons.add_circle,  // Changed from Icons.add_event
+                              icon: Icons.add_circle,
                               label: 'Create Event',
                               color: const Color(0xFF2563EB),
                               gradient: const LinearGradient(
@@ -199,6 +199,15 @@ class _OrganizerHomeScreenState extends ConsumerState<OrganizerHomeScreen> {
                                 colors: [Color(0xFF7C3AED), Color(0xFF06B6D4)],
                               ),
                               onTap: () => context.go('/qr-scanner'),
+                            ),
+                            _ActionCard(
+                              icon: Icons.analytics,
+                              label: 'Analytics',
+                              color: const Color(0xFF10B981),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
+                              ),
+                              onTap: () => context.go('/analytics'),
                             ),
                             _ActionCard(
                               icon: Icons.event,

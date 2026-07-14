@@ -20,9 +20,12 @@ import '../../features/events/presentation/screens/my_registered_events_screen.d
 import '../../features/events/presentation/screens/event_entry_qr_screen.dart';
 import '../../features/qr/presentation/screens/qr_scanner_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
+import '../../features/analytics/presentation/screens/analytics_dashboard_screen.dart';
+import '../../features/analytics/presentation/screens/event_analytics_detail_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  // Helper to get the correct home screen based on role
   Widget getHomeScreen(BuildContext context) {
     final authState = ref.read(authStateProvider);
     final user = authState.user;
@@ -51,29 +54,34 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final authState = ref.read(authStateProvider);
       final isAuth = authState.isAuthenticated;
-      final isAuthRoute = state.matchedLocation.contains('/login') ||
-          state.matchedLocation.contains('/register') ||
-          state.matchedLocation.contains('/forgot-password') ||
-          state.matchedLocation.contains('/verify-email') ||
-          state.matchedLocation.contains('/splash');
+      
+      // List of routes that don't require authentication
+      final publicRoutes = ['/login', '/register', '/forgot-password', '/verify-email', '/splash'];
+      final isPublicRoute = publicRoutes.contains(state.matchedLocation);
 
-      if (!isAuth && !isAuthRoute) {
+      // If not authenticated and trying to access protected route, redirect to login
+      if (!isAuth && !isPublicRoute) {
+        print('🔴 Redirecting to login - not authenticated');
         return '/login';
       }
-      if (isAuth && isAuthRoute && state.matchedLocation != '/splash') {
+
+      // If authenticated and trying to access public route, redirect to home
+      if (isAuth && isPublicRoute && state.matchedLocation != '/splash') {
+        print('🟢 Redirecting to home - already authenticated');
         return '/';
       }
+
       return null;
     },
     routes: [
-      // Splash
+      // ============ SPLASH ============
       GoRoute(
         path: '/splash',
         name: 'splash',
         builder: (context, state) => const SplashScreen(),
       ),
       
-      // Auth
+      // ============ AUTH ROUTES ============
       GoRoute(
         path: '/login',
         name: 'login',
@@ -95,7 +103,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const VerifyEmailScreen(),
       ),
       
-      // Main
+      // ============ MAIN ROUTES ============
       GoRoute(
         path: '/',
         name: 'home',
@@ -107,7 +115,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ProfileScreen(),
       ),
       
-      // Events
+      // ============ EVENT ROUTES ============
       GoRoute(
         path: '/events',
         name: 'events',
@@ -118,12 +126,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'event-detail',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
-          print('🔍 Navigating to event detail with ID: $id');
           return EventDetailScreen(eventId: id);
         },
       ),
       
-      // Organizer
+      // ============ ORGANIZER ROUTES ============
       GoRoute(
         path: '/create-event',
         name: 'create-event',
@@ -138,7 +145,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       
-      // Visitor Registration
+      // ============ VISITOR REGISTRATION ROUTES ============
       GoRoute(
         path: '/my-events',
         name: 'my-events',
@@ -149,42 +156,76 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'event-entry',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
-          print('🔍 Navigating to event-entry with ID: $id');
           return EventEntryQRScreen(eventId: id);
         },
       ),
       
-      // QR Scanner
+      // ============ QR SCANNER ============
       GoRoute(
         path: '/qr-scanner',
         name: 'qr-scanner',
         builder: (context, state) => const QRScannerScreen(),
       ),
       
-      // Notifications
+      // ============ NOTIFICATIONS ============
       GoRoute(
         path: '/notifications',
         name: 'notifications',
         builder: (context, state) => const NotificationsScreen(),
       ),
+      
+      // ============ ANALYTICS ROUTES ============
+      GoRoute(
+        path: '/analytics',
+        name: 'analytics',
+        builder: (context, state) => const AnalyticsDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/event-analytics/:id',
+        name: 'event-analytics',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return EventAnalyticsDetailScreen(eventId: id);
+        },
+      ),
     ],
   );
 });
 
+// ============ ROUTE CONSTANTS ============
 class AppRoutes {
+  // Splash
   static const String splash = '/splash';
+  
+  // Auth
   static const String login = '/login';
   static const String register = '/register';
   static const String forgotPassword = '/forgot-password';
   static const String verifyEmail = '/verify-email';
+  
+  // Main
   static const String home = '/';
   static const String profile = '/profile';
+  
+  // Events
   static const String events = '/events';
   static const String eventDetail = '/events/:id';
+  
+  // Organizer
   static const String createEvent = '/create-event';
   static const String editEvent = '/edit-event/:id';
+  
+  // Visitor
   static const String myEvents = '/my-events';
   static const String eventEntry = '/event-entry/:id';
+  
+  // QR
   static const String qrScanner = '/qr-scanner';
+  
+  // Notifications
   static const String notifications = '/notifications';
+  
+  // Analytics
+  static const String analytics = '/analytics';
+  static const String eventAnalytics = '/event-analytics/:id';
 }

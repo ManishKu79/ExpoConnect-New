@@ -212,13 +212,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   // ============ LOGOUT ============
   Future<void> logout() async {
-    print('👋 Logging out');
-    await repository.logout();
-    state = state.copyWith(
-      user: null,
-      isAuthenticated: false,
-      error: null,
-    );
+    print('👋 Logging out...');
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await repository.logout();
+      print('✅ Logout successful');
+    } catch (e) {
+      print('❌ Logout error: $e');
+    } finally {
+      // Clear state and storage
+      await StorageService.clearAll();
+      state = state.copyWith(
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      );
+      print('✅ State reset - isAuthenticated: ${state.isAuthenticated}');
+    }
   }
 
   // ============ UPDATE PROFILE ============

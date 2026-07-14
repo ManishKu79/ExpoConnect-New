@@ -574,13 +574,15 @@ exports.verifyEntryQR = async (req, res, next) => {
       });
     }
 
-    if (!event.registeredUsers || !event.registeredUsers.some(u => u.toString() === data.userId)) {
+    // Check if user is registered for this event
+    if (!event.registeredUsers || !event.registeredUsers.some(id => id.toString() === data.userId)) {
       return res.status(403).json({
         success: false,
         message: 'User is not registered for this event',
       });
     }
 
+    // Check if QR is expired (24 hours)
     const qrTime = data.timestamp;
     const currentTime = Date.now();
     const hoursDiff = (currentTime - qrTime) / (1000 * 60 * 60);

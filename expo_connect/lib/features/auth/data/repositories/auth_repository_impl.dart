@@ -121,10 +121,16 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> logout() async {
+    print('👋 Logging out...');
     try {
       await remoteDataSource.logout();
+      print('✅ Logout API call successful');
+    } catch (e) {
+      print('❌ Logout API error: $e');
     } finally {
+      // Always clear local storage regardless of API response
       await StorageService.clearAll();
+      print('✅ Local storage cleared');
     }
   }
 

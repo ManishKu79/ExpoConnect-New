@@ -375,7 +375,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             
             const SizedBox(height: 24),
             
-            // Change Password Card
+            // Security Card
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -576,10 +576,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              authNotifier.logout();
+            onPressed: () async {
               Navigator.pop(context);
-              context.go('/login');
+              print('🔵 Logout button pressed');
+              await authNotifier.logout();
+              print('🔵 After logout, navigating to login');
+              // Force navigation to login using GoRouter
+              if (context.mounted) {
+                GoRouter.of(context).go('/login');
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -611,7 +616,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               await authNotifier.deleteAccount();
               Navigator.pop(context);
               if (context.mounted) {
-                context.go('/login');
+                GoRouter.of(context).go('/login');
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Account deleted successfully'),
