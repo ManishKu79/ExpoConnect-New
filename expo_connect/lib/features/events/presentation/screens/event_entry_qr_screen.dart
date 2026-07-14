@@ -25,7 +25,21 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
   @override
   void initState() {
     super.initState();
-    _loadQRCode();
+    print('🔍 EventEntryQRScreen initialized with eventId: "${widget.eventId}"');
+    
+    if (widget.eventId.isEmpty || 
+        widget.eventId == 'undefined' || 
+        widget.eventId == 'null' ||
+        widget.eventId == '') {
+      setState(() {
+        _error = 'Invalid event ID. Please go back and try again.';
+        _isLoading = false;
+      });
+      print('❌ Invalid event ID');
+    } else {
+      print('✅ Valid event ID, loading QR...');
+      _loadQRCode();
+    }
   }
 
   Future<void> _loadQRCode() async {
@@ -49,11 +63,11 @@ class _EventEntryQRScreenState extends ConsumerState<EventEntryQRScreen> {
       final qrCode = qrData['qrCode'];
       final eventTitle = qrData['eventTitle'];
       
-      print('📝 QR Code present: ${qrCode != null ? 'Yes (length: ${qrCode.length})' : 'No'}');
+      print('📝 QR Code present: ${qrCode != null ? 'Yes' : 'No'}');
       print('📝 Event Title: $eventTitle');
       
       if (qrCode == null || qrCode.isEmpty) {
-        throw Exception('QR code is empty or null');
+        throw Exception('QR code is empty or null. Make sure you are registered for this event.');
       }
       
       setState(() {

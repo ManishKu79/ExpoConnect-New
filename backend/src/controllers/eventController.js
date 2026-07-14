@@ -37,8 +37,8 @@ exports.createEvent = async (req, res, next) => {
     }
 
     const event = await Event.create({
-      title,
-      description,
+      title: title.trim(),
+      description: description.trim(),
       banner: banner || '',
       startDate: new Date(startDate),
       endDate: new Date(endDate),
@@ -56,10 +56,30 @@ exports.createEvent = async (req, res, next) => {
 
     console.log('✅ Event created:', event._id);
 
+    // Return event with id as string
+    const eventData = {
+      id: event._id.toString(),
+      title: event.title,
+      description: event.description,
+      banner: event.banner,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      location: event.location,
+      categories: event.categories,
+      maxAttendees: event.maxAttendees,
+      ticketPrice: event.ticketPrice,
+      isPublic: event.isPublic,
+      status: event.status,
+      organizer: event.organizer,
+      registeredCount: event.registeredCount,
+      registeredUsers: event.registeredUsers,
+      createdAt: event.createdAt,
+    };
+
     res.status(201).json({
       success: true,
       message: 'Event created successfully',
-      data: event,
+      data: eventData,
     });
   } catch (error) {
     console.error('❌ Create event error:', error);
@@ -89,9 +109,29 @@ exports.getAllEvents = async (req, res, next) => {
 
     const total = await Event.countDocuments(query);
 
+    // Convert events to include id as string
+    const eventsWithId = events.map(event => ({
+      id: event._id.toString(),
+      title: event.title,
+      description: event.description,
+      banner: event.banner,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      location: event.location,
+      categories: event.categories,
+      maxAttendees: event.maxAttendees,
+      ticketPrice: event.ticketPrice,
+      isPublic: event.isPublic,
+      status: event.status,
+      organizer: event.organizer,
+      registeredCount: event.registeredCount,
+      registeredUsers: event.registeredUsers,
+      createdAt: event.createdAt,
+    }));
+
     res.status(200).json({
       success: true,
-      data: events,
+      data: eventsWithId,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -118,9 +158,28 @@ exports.getEventById = async (req, res, next) => {
       });
     }
 
+    const eventData = {
+      id: event._id.toString(),
+      title: event.title,
+      description: event.description,
+      banner: event.banner,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      location: event.location,
+      categories: event.categories,
+      maxAttendees: event.maxAttendees,
+      ticketPrice: event.ticketPrice,
+      isPublic: event.isPublic,
+      status: event.status,
+      organizer: event.organizer,
+      registeredCount: event.registeredCount,
+      registeredUsers: event.registeredUsers,
+      createdAt: event.createdAt,
+    };
+
     res.status(200).json({
       success: true,
-      data: event,
+      data: eventData,
     });
   } catch (error) {
     console.error('❌ Get event by id error:', error);
@@ -165,10 +224,29 @@ exports.updateEvent = async (req, res, next) => {
 
     await event.save();
 
+    const eventData = {
+      id: event._id.toString(),
+      title: event.title,
+      description: event.description,
+      banner: event.banner,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      location: event.location,
+      categories: event.categories,
+      maxAttendees: event.maxAttendees,
+      ticketPrice: event.ticketPrice,
+      isPublic: event.isPublic,
+      status: event.status,
+      organizer: event.organizer,
+      registeredCount: event.registeredCount,
+      registeredUsers: event.registeredUsers,
+      createdAt: event.createdAt,
+    };
+
     res.status(200).json({
       success: true,
       message: 'Event updated successfully',
-      data: event,
+      data: eventData,
     });
   } catch (error) {
     console.error('❌ Update event error:', error);
@@ -212,9 +290,28 @@ exports.getMyEvents = async (req, res, next) => {
     const events = await Event.find({ organizer: req.user._id })
       .sort({ createdAt: -1 });
 
+    const eventsWithId = events.map(event => ({
+      id: event._id.toString(),
+      title: event.title,
+      description: event.description,
+      banner: event.banner,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      location: event.location,
+      categories: event.categories,
+      maxAttendees: event.maxAttendees,
+      ticketPrice: event.ticketPrice,
+      isPublic: event.isPublic,
+      status: event.status,
+      organizer: event.organizer,
+      registeredCount: event.registeredCount,
+      registeredUsers: event.registeredUsers,
+      createdAt: event.createdAt,
+    }));
+
     res.status(200).json({
       success: true,
-      data: events,
+      data: eventsWithId,
     });
   } catch (error) {
     console.error('❌ Get my events error:', error);
@@ -233,7 +330,6 @@ exports.registerForEvent = async (req, res, next) => {
 
     console.log('📝 Event ID:', eventId);
     console.log('📝 User ID:', userIdString);
-    console.log('📝 User Email:', req.user.email);
 
     const event = await Event.findById(eventId);
     if (!event) {
@@ -245,8 +341,6 @@ exports.registerForEvent = async (req, res, next) => {
     }
 
     console.log('📝 Event found:', event.title);
-    console.log('📝 Current registered users:', event.registeredUsers);
-    console.log('📝 Current registered count:', event.registeredCount);
 
     if (event.registeredUsers && event.registeredUsers.some(id => id.toString() === userIdString)) {
       console.log('⚠️ User already registered');
@@ -258,7 +352,6 @@ exports.registerForEvent = async (req, res, next) => {
 
     if (!event.registeredUsers) {
       event.registeredUsers = [];
-      console.log('📝 Initialized registeredUsers array');
     }
 
     event.registeredUsers.push(userId);
@@ -266,18 +359,13 @@ exports.registerForEvent = async (req, res, next) => {
     await event.save();
 
     console.log('✅ User registered successfully!');
-    console.log('📝 Updated registered users:', event.registeredUsers);
     console.log('📝 Total registered count:', event.registeredCount);
-
-    const verifyEvent = await Event.findById(eventId);
-    console.log('📝 Verification - registered users:', verifyEvent.registeredUsers);
-    console.log('📝 Verification - registered count:', verifyEvent.registeredCount);
 
     res.status(200).json({
       success: true,
       message: 'Registered for event successfully',
       data: {
-        eventId: event._id,
+        eventId: event._id.toString(),
         eventTitle: event.title,
         registered: true,
         registeredCount: event.registeredCount,
@@ -285,7 +373,6 @@ exports.registerForEvent = async (req, res, next) => {
     });
   } catch (error) {
     console.error('❌ Register for event error:', error);
-    console.error('❌ Error stack:', error.stack);
     next(error);
   }
 };
@@ -344,7 +431,6 @@ exports.checkRegistrationStatus = async (req, res, next) => {
     }
 
     console.log('📝 Event found:', event.title);
-    console.log('📝 Registered users:', event.registeredUsers);
 
     const isRegistered = event.registeredUsers && event.registeredUsers.some(id => id.toString() === userId);
 
@@ -354,7 +440,7 @@ exports.checkRegistrationStatus = async (req, res, next) => {
       success: true,
       data: {
         isRegistered: isRegistered,
-        eventId: event._id,
+        eventId: event._id.toString(),
         eventTitle: event.title,
         registeredCount: event.registeredCount,
       },
@@ -375,6 +461,14 @@ exports.generateEntryQR = async (req, res, next) => {
     console.log('🔍 ===== GENERATING QR CODE =====');
     console.log('📝 User ID:', userIdString);
     console.log('📝 Event ID:', eventId);
+
+    if (!eventId) {
+      console.log('❌ Event ID is undefined or null');
+      return res.status(400).json({
+        success: false,
+        message: 'Event ID is required',
+      });
+    }
 
     const event = await Event.findById(eventId);
     if (!event) {
@@ -409,8 +503,6 @@ exports.generateEntryQR = async (req, res, next) => {
       timestamp: Date.now(),
     });
 
-    console.log('📝 QR Data:', qrData);
-
     const qrCode = await QRCode.toDataURL(qrData, {
       errorCorrectionLevel: 'H',
       width: 400,
@@ -422,14 +514,13 @@ exports.generateEntryQR = async (req, res, next) => {
     });
 
     console.log('✅ QR code generated successfully');
-    console.log('📝 QR Code length:', qrCode.length);
 
     res.status(200).json({
       success: true,
       message: 'QR code generated successfully',
       data: {
         qrCode: qrCode,
-        eventId: event._id,
+        eventId: event._id.toString(),
         eventTitle: event.title,
         userName: `${req.user.firstName} ${req.user.lastName}`,
         registeredCount: event.registeredCount,
@@ -437,7 +528,6 @@ exports.generateEntryQR = async (req, res, next) => {
     });
   } catch (error) {
     console.error('❌ Generate QR error:', error);
-    console.error('❌ Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Failed to generate QR code',
@@ -513,11 +603,11 @@ exports.verifyEntryQR = async (req, res, next) => {
       message: 'QR code verified successfully',
       data: {
         event: {
-          id: event._id,
+          id: event._id.toString(),
           title: event.title,
         },
         user: {
-          id: user._id,
+          id: user._id.toString(),
           name: `${user.firstName} ${user.lastName}`,
           email: user.email,
         },
@@ -547,13 +637,29 @@ exports.getMyRegisteredEvents = async (req, res, next) => {
     }).populate('organizer', 'firstName lastName email');
 
     console.log('📝 Found', events.length, 'registered events');
-    if (events.length > 0) {
-      console.log('📝 Event titles:', events.map(e => e.title).join(', '));
-    }
+
+    const eventsWithId = events.map(event => ({
+      id: event._id.toString(),
+      title: event.title,
+      description: event.description,
+      banner: event.banner,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      location: event.location,
+      categories: event.categories,
+      maxAttendees: event.maxAttendees,
+      ticketPrice: event.ticketPrice,
+      isPublic: event.isPublic,
+      status: event.status,
+      organizer: event.organizer,
+      registeredCount: event.registeredCount,
+      registeredUsers: event.registeredUsers,
+      createdAt: event.createdAt,
+    }));
 
     res.status(200).json({
       success: true,
-      data: events,
+      data: eventsWithId,
     });
   } catch (error) {
     console.error('❌ Get registered events error:', error);

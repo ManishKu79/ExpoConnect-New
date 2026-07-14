@@ -84,6 +84,8 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
           ),
         ),
         data: (event) {
+          print('📝 Event Detail - ID: ${event.id}, Title: ${event.title}');
+          
           return CustomScrollView(
             slivers: [
               SliverAppBar(
@@ -332,7 +334,17 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                               ),
                               ElevatedButton.icon(
                                 onPressed: () {
-                                  context.go('/event-entry/${event.id}');
+                                  print('🔍 Navigating to event-entry with ID: ${event.id}');
+                                  if (event.id.isNotEmpty && event.id != 'undefined') {
+                                    context.go('/event-entry/${event.id}');
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Error: Event ID not found'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
                                 },
                                 icon: const Icon(Icons.qr_code, size: 18),
                                 label: const Text('Entry QR'),

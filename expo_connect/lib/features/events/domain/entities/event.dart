@@ -34,38 +34,26 @@
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
-    // Handle _id safely - it could be String, ObjectId, or null
+    // Get ID from multiple possible sources
     String getId() {
-      final idValue = json['_id'] ?? json['id'];
-      if (idValue == null) return '';
-      if (idValue is String) return idValue;
-      if (idValue is Map) return idValue['\$oid']?.toString() ?? '';
-      return idValue.toString();
-    }
-
-    // Handle organizer safely
-    String? getOrganizerId() {
-      final org = json['organizer'];
-      if (org == null) return json['organizerId']?.toString();
-      if (org is String) return org;
-      if (org is Map) return org['_id']?.toString() ?? org['id']?.toString();
-      return org.toString();
-    }
-
-    String? getOrganizerName() {
-      final org = json['organizer'];
-      if (org == null) return json['organizerName'];
-      if (org is Map) return org['firstName'] ?? org['name'];
-      return null;
-    }
-
-    // Handle location safely
-    String? getLocation() {
-      final loc = json['location'];
-      if (loc == null) return null;
-      if (loc is String) return loc;
-      if (loc is Map) return loc['venue']?.toString() ?? loc['city']?.toString();
-      return null;
+      // Check _id first (MongoDB)
+      if (json['_id'] != null) {
+        if (json['_id'] is String) return json['_id'];
+        // Handle MongoDB ObjectId format
+        if (json['_id'] is Map) {
+          final idMap = json['_id'] as Map;
+          if (idMap.containsKey('\$oid')) {
+            return idMap['\$oid'].toString();
+          }
+        }
+        return json['_id'].toString();
+      }
+      // Check id field
+      if (json['id'] != null) {
+        return json['id'].toString();
+      }
+      // Fallback
+      return '';
     }
 
     return Event(
@@ -80,8 +68,8 @@
           ? DateTime.parse(json['endDate'].toString()) 
           : DateTime.now().add(const Duration(hours: 1)),
       status: json['status']?.toString() ?? 'draft',
-      organizerId: getOrganizerId(),
-      organizerName: getOrganizerName(),
+      organizerId: json['organizer']?['_id']?.toString() ?? json['organizerId']?.toString(),
+      organizerName: json['organizer']?['firstName']?.toString() ?? json['organizerName']?.toString(),
       maxAttendees: json['maxAttendees'] != null 
           ? int.tryParse(json['maxAttendees'].toString()) 
           : null,
@@ -92,7 +80,7 @@
       categories: json['categories'] != null 
           ? List<String>.from(json['categories']) 
           : [],
-      location: getLocation(),
+      location: json['location']?['venue']?.toString() ?? json['location']?.toString(),
       ticketPrice: json['ticketPrice'] != null 
           ? double.tryParse(json['ticketPrice'].toString()) 
           : null,
@@ -101,6 +89,7 @@
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'title': title,
       'description': description,
       'banner': banner,

@@ -103,7 +103,17 @@ class _MyRegisteredEventsScreenState extends ConsumerState<MyRegisteredEventsScr
               return _RegisteredEventCard(
                 event: event,
                 onTap: () {
-                  context.go('/event-entry/${event.id}');
+                  print('🔍 Navigating to event-entry with ID: ${event.id}');
+                  if (event.id.isNotEmpty && event.id != 'undefined') {
+                    context.go('/event-entry/${event.id}');
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Error: Event ID not found'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 },
               );
             },
