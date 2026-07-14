@@ -29,7 +29,6 @@ class EventListNotifier extends StateNotifier<List<Event>> {
     if (_isLoading || !_hasMore) return;
     _isLoading = true;
     
-    // If search changed, reset
     if (search != null && search != _currentSearch) {
       _currentSearch = search;
       _page = 1;

@@ -24,24 +24,26 @@ const EventSchema = new mongoose.Schema({
     required: true,
   },
   location: {
-    venue: String,
-    address: String,
-    city: String,
-    country: String,
+    venue: { type: String, default: '' },
+    address: { type: String, default: '' },
+    city: { type: String, default: '' },
+    country: { type: String, default: '' },
     coordinates: {
-      lat: Number,
-      lng: Number,
+      lat: { type: Number, default: 0 },
+      lng: { type: Number, default: 0 },
     },
   },
   banner: {
     type: String,
     default: '',
   },
-  categories: [String],
+  categories: [{
+    type: String,
+  }],
   status: {
     type: String,
     enum: ['draft', 'published', 'ongoing', 'completed', 'cancelled'],
-    default: 'draft',
+    default: 'published',
   },
   isPublic: {
     type: Boolean,
@@ -73,5 +75,16 @@ const EventSchema = new mongoose.Schema({
 EventSchema.index({ startDate: 1, endDate: 1 });
 EventSchema.index({ organizer: 1 });
 EventSchema.index({ status: 1 });
+EventSchema.index({ title: 'text', description: 'text' });
+
+// Add toJSON transform to convert _id to string
+EventSchema.set('toJSON', {
+  transform: (doc, ret) => {
+    ret.id = ret._id.toString();
+    delete ret._id;
+    delete ret.__v;
+    return ret;
+  }
+});
 
 module.exports = mongoose.model('Event', EventSchema);

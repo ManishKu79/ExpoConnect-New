@@ -1,75 +1,106 @@
-﻿import 'package:dio/dio.dart';
-import '../../../../core/constants/api_endpoints.dart';
-import '../../../../shared/services/api_service.dart';
+﻿import '../datasources/event_remote_datasource.dart';
+import '../../domain/entities/event.dart';
+import '../../domain/repositories/event_repository.dart';
 
-class EventRemoteDataSource {
-  final Dio dio = ApiService.dio;
+class EventRepositoryImpl implements EventRepository {
+  final EventRemoteDataSource remoteDataSource;
 
-  Future<Map<String, dynamic>> getEvents({
+  EventRepositoryImpl(this.remoteDataSource);
+
+  @override
+  Future<List<Event>> getEvents({
     String? status,
     String? search,
     int page = 1,
     int limit = 10,
   }) async {
-    final response = await dio.get(
-      ApiEndpoints.events,
-      queryParameters: {
-        if (status != null) 'status': status,
-        if (search != null && search.isNotEmpty) 'search': search,
-        'page': page,
-        'limit': limit,
-      },
-    );
-    return response.data;
+    try {
+      final response = await remoteDataSource.getEvents(
+        status: status,
+        search: search,
+        page: page,
+        limit: limit,
+      );
+      final data = response['data'] as List? ?? [];
+      return data.map((json) => Event.fromJson(json)).toList();
+    } catch (e) {
+      print('❌ Get events error: $e');
+      return [];
+    }
   }
 
-  Future<Map<String, dynamic>> getEventById(String id) async {
-    final response = await dio.get('${ApiEndpoints.events}/$id');
-    return response.data;
+  @override
+  Future<Event> getEventById(String id) async {
+    try {
+      final response = await remoteDataSource.getEventById(id);
+      return Event.fromJson(response['data']);
+    } catch (e) {
+      print('❌ Get event by id error: $e');
+      rethrow;
+    }
   }
 
-  Future<Map<String, dynamic>> registerForEvent(String eventId) async {
-    final response = await dio.post(
-      '${ApiEndpoints.events}/$eventId/register',
-    );
-    return response.data;
+  @override
+  Future<void> registerForEvent(String eventId) async {
+    try {
+      await remoteDataSource.registerForEvent(eventId);
+    } catch (e) {
+      print('❌ Register for event error: $e');
+      rethrow;
+    }
   }
 
-  Future<Map<String, dynamic>> unregisterFromEvent(String eventId) async {
-    final response = await dio.delete(
-      '${ApiEndpoints.events}/$eventId/register',
-    );
-    return response.data;
+  @override
+  Future<void> unregisterFromEvent(String eventId) async {
+    try {
+      await remoteDataSource.unregisterFromEvent(eventId);
+    } catch (e) {
+      print('❌ Unregister from event error: $e');
+      rethrow;
+    }
   }
 
-  // Organizer methods
-  Future<Map<String, dynamic>> createEvent(Map<String, dynamic> eventData) async {
-    final response = await dio.post(
-      ApiEndpoints.events,
-      data: eventData,
-    );
-    return response.data;
+  @override
+  Future<Event> createEvent(Map<String, dynamic> eventData) async {
+    try {
+      final response = await remoteDataSource.createEvent(eventData);
+      return Event.fromJson(response['data']);
+    } catch (e) {
+      print('❌ Create event error: $e');
+      rethrow;
+    }
   }
 
-  Future<Map<String, dynamic>> updateEvent(String eventId, Map<String, dynamic> eventData) async {
-    final response = await dio.put(
-      '${ApiEndpoints.events}/$eventId',
-      data: eventData,
-    );
-    return response.data;
+  @override
+  Future<Event> updateEvent(String eventId, Map<String, dynamic> eventData) async {
+    try {
+      final response = await remoteDataSource.updateEvent(eventId, eventData);
+      return Event.fromJson(response['data']);
+    } catch (e) {
+      print('❌ Update event error: $e');
+      rethrow;
+    }
   }
 
-  Future<Map<String, dynamic>> deleteEvent(String eventId) async {
-    final response = await dio.delete(
-      '${ApiEndpoints.events}/$eventId',
-    );
-    return response.data;
+  @override
+  Future<void> deleteEvent(String eventId) async {
+    try {
+      await remoteDataSource.deleteEvent(eventId);
+    } catch (e) {
+      print('❌ Delete event error: $e');
+      rethrow;
+    }
   }
 
-  Future<Map<String, dynamic>> getMyEvents() async {
-    final response = await dio.get(
-      '${ApiEndpoints.events}/my-events',
-    );
-    return response.data;
+  @override
+  Future<List<Event>> getMyEvents() async {
+    try {
+      final response = await remoteDataSource.getMyEvents();
+      final data = response['data'] as List? ?? [];
+      return data.map((json) => Event.fromJson(json)).toList();
+    } catch (e) {
+      print('❌ Get my events error: $e');
+      return [];
+    }
   }
 }

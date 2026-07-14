@@ -183,7 +183,7 @@ class _OrganizerHomeScreenState extends ConsumerState<OrganizerHomeScreen> {
                           childAspectRatio: 0.9,
                           children: [
                             _ActionCard(
-                              icon: Icons.add_event,
+                              icon: Icons.add_circle,
                               label: 'Create Event',
                               color: const Color(0xFF2563EB),
                               gradient: const LinearGradient(

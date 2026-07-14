@@ -34,20 +34,30 @@
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
+    // Handle both _id and id fields
+    final idValue = json['_id'] ?? json['id'] ?? '';
+    final id = idValue is String ? idValue : idValue.toString();
+    
     return Event(
-      id: json['_id'] ?? json['id'] ?? '',
+      id: id,
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       banner: json['banner'],
-      startDate: json['startDate'] != null ? DateTime.parse(json['startDate']) : DateTime.now(),
-      endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : DateTime.now().add(const Duration(hours: 1)),
+      startDate: json['startDate'] != null 
+          ? DateTime.parse(json['startDate']) 
+          : DateTime.now(),
+      endDate: json['endDate'] != null 
+          ? DateTime.parse(json['endDate']) 
+          : DateTime.now().add(const Duration(hours: 1)),
       status: json['status'] ?? 'draft',
-      organizerId: json['organizer']?['_id'] ?? json['organizerId'],
+      organizerId: json['organizer']?['_id']?.toString() ?? json['organizerId'],
       organizerName: json['organizer']?['firstName'] ?? json['organizerName'],
       maxAttendees: json['maxAttendees'],
       registeredCount: json['registeredCount'],
       isPublic: json['isPublic'] ?? true,
-      categories: json['categories'] != null ? List<String>.from(json['categories']) : [],
+      categories: json['categories'] != null 
+          ? List<String>.from(json['categories']) 
+          : [],
       location: json['location']?['venue'] ?? json['location'],
       ticketPrice: json['ticketPrice']?.toDouble(),
     );

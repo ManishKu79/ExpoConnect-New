@@ -152,6 +152,141 @@ exports.login = async (req, res, next) => {
   }
 };
 
+// ============ VERIFY EMAIL ============
+exports.verifyEmail = async (req, res, next) => {
+  try {
+    const { token } = req.body;
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired verification token',
+      });
+    }
+
+    user.isEmailVerified = true;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Email verified successfully',
+    });
+  } catch (error) {
+    console.error('❌ Email verification error:', error);
+    next(error);
+  }
+};
+
+// ============ FORGOT PASSWORD ============
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User with this email does not exist',
+      });
+    }
+
+    const resetToken = tokenService.generateResetToken();
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpire = Date.now() + 24 * 60 * 60 * 1000;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset email sent successfully',
+    });
+  } catch (error) {
+    console.error('❌ Forgot password error:', error);
+    next(error);
+  }
+};
+
+// ============ RESET PASSWORD ============
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { token, password } = req.body;
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset token',
+      });
+    }
+
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully',
+    });
+  } catch (error) {
+    console.error('❌ Reset password error:', error);
+    next(error);
+  }
+};
+
+// ============ REFRESH TOKEN ============
+exports.refreshToken = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Refresh token is required',
+      });
+    }
+
+    const decoded = tokenService.verifyToken(refreshToken);
+    if (!decoded) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid refresh token',
+      });
+    }
+
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    const newToken = tokenService.generateToken(user._id);
+    const newRefreshToken = tokenService.generateRefreshToken(user._id);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        token: newToken,
+        refreshToken: newRefreshToken,
+      },
+    });
+  } catch (error) {
+    console.error('❌ Refresh token error:', error);
+    next(error);
+  }
+};
+
 // ============ GET CURRENT USER ============
 exports.getMe = async (req, res, next) => {
   try {
@@ -292,109 +427,6 @@ exports.deleteAccount = async (req, res, next) => {
     });
   } catch (error) {
     console.error('❌ Delete account error:', error);
-    next(error);
-  }
-};
-
-// ============ FORGOT PASSWORD ============
-exports.forgotPassword = async (req, res, next) => {
-  try {
-    const { email } = req.body;
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User with this email does not exist',
-      });
-    }
-
-    const resetToken = tokenService.generateResetToken();
-    user.resetPasswordToken = resetToken;
-    user.resetPasswordExpire = Date.now() + 24 * 60 * 60 * 1000;
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Password reset email sent successfully',
-    });
-  } catch (error) {
-    console.error('❌ Forgot password error:', error);
-    next(error);
-  }
-};
-
-// ============ RESET PASSWORD ============
-exports.resetPassword = async (req, res, next) => {
-  try {
-    const { token, password } = req.body;
-
-    const user = await User.findOne({
-      resetPasswordToken: token,
-      resetPasswordExpire: { $gt: Date.now() },
-    });
-
-    if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or expired reset token',
-      });
-    }
-
-    user.password = password;
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Password reset successfully',
-    });
-  } catch (error) {
-    console.error('❌ Reset password error:', error);
-    next(error);
-  }
-};
-
-// ============ REFRESH TOKEN ============
-exports.refreshToken = async (req, res, next) => {
-  try {
-    const { refreshToken } = req.body;
-
-    if (!refreshToken) {
-      return res.status(400).json({
-        success: false,
-        message: 'Refresh token is required',
-      });
-    }
-
-    const decoded = tokenService.verifyToken(refreshToken);
-    if (!decoded) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid refresh token',
-      });
-    }
-
-    const user = await User.findById(decoded.userId);
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'User not found',
-      });
-    }
-
-    const newToken = tokenService.generateToken(user._id);
-    const newRefreshToken = tokenService.generateRefreshToken(user._id);
-
-    res.status(200).json({
-      success: true,
-      data: {
-        token: newToken,
-        refreshToken: newRefreshToken,
-      },
-    });
-  } catch (error) {
-    console.error('❌ Refresh token error:', error);
     next(error);
   }
 };

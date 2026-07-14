@@ -41,4 +41,34 @@ class EventRemoteDataSource {
     );
     return response.data;
   }
+
+  Future<Map<String, dynamic>> createEvent(Map<String, dynamic> eventData) async {
+    final response = await dio.post(
+      ApiEndpoints.events,
+      data: eventData,
+    );
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> updateEvent(String eventId, Map<String, dynamic> eventData) async {
+    final response = await dio.put(
+      '${ApiEndpoints.events}/$eventId',
+      data: eventData,
+    );
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> deleteEvent(String eventId) async {
+    final response = await dio.delete(
+      '${ApiEndpoints.events}/$eventId',
+    );
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> getMyEvents() async {
+    final response = await dio.get(
+      '${ApiEndpoints.events}/my-events',
+    );
+    return response.data;
+  }
 }
