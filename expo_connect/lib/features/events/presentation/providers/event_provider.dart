@@ -12,6 +12,7 @@ final eventRepositoryProvider = Provider<EventRepository>((ref) {
   return EventRepositoryImpl(ref.read(eventRemoteDataSourceProvider));
 });
 
+// ============ EVENT LIST ============
 final eventListProvider = StateNotifierProvider<EventListNotifier, List<Event>>((ref) {
   return EventListNotifier(ref.read(eventRepositoryProvider));
 });
@@ -69,11 +70,13 @@ class EventListNotifier extends StateNotifier<List<Event>> {
   }
 }
 
+// ============ EVENT DETAIL ============
 final eventDetailProvider = FutureProvider.family<Event, String>((ref, id) async {
   final repo = ref.read(eventRepositoryProvider);
   return repo.getEventById(id);
 });
 
+// ============ REGISTRATION ============
 final eventRegistrationProvider = StateNotifierProvider<EventRegistrationNotifier, bool>((ref) {
   return EventRegistrationNotifier(ref.read(eventRepositoryProvider));
 });
@@ -97,6 +100,33 @@ class EventRegistrationNotifier extends StateNotifier<bool> {
       await repository.unregisterFromEvent(eventId);
     } finally {
       state = false;
+    }
+  }
+}
+
+// ============ REGISTRATION STATUS ============
+final registrationStatusProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, eventId) async {
+  final repo = ref.read(eventRepositoryProvider);
+  return repo.checkRegistrationStatus(eventId);
+});
+
+// ============ MY REGISTERED EVENTS ============
+final myRegisteredEventsProvider = StateNotifierProvider<MyRegisteredEventsNotifier, AsyncValue<List<Event>>>((ref) {
+  return MyRegisteredEventsNotifier(ref.read(eventRepositoryProvider));
+});
+
+class MyRegisteredEventsNotifier extends StateNotifier<AsyncValue<List<Event>>> {
+  final EventRepository repository;
+
+  MyRegisteredEventsNotifier(this.repository) : super(const AsyncValue.loading());
+
+  Future<void> loadRegisteredEvents() async {
+    state = const AsyncValue.loading();
+    try {
+      final events = await repository.getMyRegisteredEvents();
+      state = AsyncValue.data(events);
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
     }
   }
 }

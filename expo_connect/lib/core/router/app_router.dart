@@ -16,12 +16,13 @@ import '../../features/events/presentation/screens/event_list_screen.dart';
 import '../../features/events/presentation/screens/event_detail_screen.dart';
 import '../../features/events/presentation/screens/create_event_screen.dart';
 import '../../features/events/presentation/screens/edit_event_screen.dart';
+import '../../features/events/presentation/screens/my_registered_events_screen.dart';
+import '../../features/events/presentation/screens/event_entry_qr_screen.dart';
 import '../../features/qr/presentation/screens/qr_scanner_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  // Helper to get the correct home screen based on role
   Widget getHomeScreen(BuildContext context) {
     final authState = ref.read(authStateProvider);
     final user = authState.user;
@@ -39,12 +40,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return const OrganizerHomeScreen();
       case 'admin':
         return const OrganizerHomeScreen();
-      case 'sponsor':
-        return const HomeScreen();
-      case 'speaker':
-        return const HomeScreen();
-      case 'investor':
-        return const HomeScreen();
       default:
         return const VisitorHomeScreen();
     }
@@ -71,14 +66,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      // ============ SPLASH ============
+      // Splash
       GoRoute(
         path: '/splash',
         name: 'splash',
         builder: (context, state) => const SplashScreen(),
       ),
       
-      // ============ AUTH ROUTES ============
+      // Auth
       GoRoute(
         path: '/login',
         name: 'login',
@@ -100,7 +95,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const VerifyEmailScreen(),
       ),
       
-      // ============ MAIN ROUTES ============
+      // Main
       GoRoute(
         path: '/',
         name: 'home',
@@ -112,7 +107,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ProfileScreen(),
       ),
       
-      // ============ EVENT ROUTES ============
+      // Events
       GoRoute(
         path: '/events',
         name: 'events',
@@ -127,7 +122,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       
-      // ============ ORGANIZER ROUTES ============
+      // Organizer
       GoRoute(
         path: '/create-event',
         name: 'create-event',
@@ -141,20 +136,30 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return EditEventScreen(eventId: id);
         },
       ),
+      
+      // Visitor Registration
       GoRoute(
         path: '/my-events',
         name: 'my-events',
-        builder: (context, state) => const EventListScreen(),
+        builder: (context, state) => const MyRegisteredEventsScreen(),
+      ),
+      GoRoute(
+        path: '/event-entry/:id',
+        name: 'event-entry',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return EventEntryQRScreen(eventId: id);
+        },
       ),
       
-      // ============ QR SCANNER ============
+      // QR Scanner
       GoRoute(
         path: '/qr-scanner',
         name: 'qr-scanner',
         builder: (context, state) => const QRScannerScreen(),
       ),
       
-      // ============ NOTIFICATIONS ============
+      // Notifications
       GoRoute(
         path: '/notifications',
         name: 'notifications',
@@ -164,33 +169,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   );
 });
 
-// ============ ROUTE CONSTANTS ============
 class AppRoutes {
-  // Splash
   static const String splash = '/splash';
-  
-  // Auth
   static const String login = '/login';
   static const String register = '/register';
   static const String forgotPassword = '/forgot-password';
   static const String verifyEmail = '/verify-email';
-  
-  // Main
   static const String home = '/';
   static const String profile = '/profile';
-  
-  // Events
   static const String events = '/events';
   static const String eventDetail = '/events/:id';
-  
-  // Organizer
   static const String createEvent = '/create-event';
   static const String editEvent = '/edit-event/:id';
   static const String myEvents = '/my-events';
-  
-  // QR
+  static const String eventEntry = '/event-entry/:id';
   static const String qrScanner = '/qr-scanner';
-  
-  // Notifications
   static const String notifications = '/notifications';
 }

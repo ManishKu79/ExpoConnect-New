@@ -64,6 +64,10 @@ const EventSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  registeredUsers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  }],
   createdAt: {
     type: Date,
     default: Date.now,
@@ -75,16 +79,6 @@ const EventSchema = new mongoose.Schema({
 EventSchema.index({ startDate: 1, endDate: 1 });
 EventSchema.index({ organizer: 1 });
 EventSchema.index({ status: 1 });
-EventSchema.index({ title: 'text', description: 'text' });
-
-// Add toJSON transform to convert _id to string
-EventSchema.set('toJSON', {
-  transform: (doc, ret) => {
-    ret.id = ret._id.toString();
-    delete ret._id;
-    delete ret.__v;
-    return ret;
-  }
-});
+EventSchema.index({ registeredUsers: 1 });
 
 module.exports = mongoose.model('Event', EventSchema);

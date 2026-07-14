@@ -21,8 +21,6 @@ class EventRepositoryImpl implements EventRepository {
         page: page,
         limit: limit,
       );
-      print('📦 Get events response: ${response['data']}');
-      
       final data = response['data'] as List? ?? [];
       return data.map((json) => Event.fromJson(json)).toList();
     } catch (e) {
@@ -35,7 +33,6 @@ class EventRepositoryImpl implements EventRepository {
   Future<Event> getEventById(String id) async {
     try {
       final response = await remoteDataSource.getEventById(id);
-      print('📦 Get event by id response: ${response['data']}');
       return Event.fromJson(response['data']);
     } catch (e) {
       print('❌ Get event by id error: $e');
@@ -64,10 +61,57 @@ class EventRepositoryImpl implements EventRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> checkRegistrationStatus(String eventId) async {
+    try {
+      final response = await remoteDataSource.checkRegistrationStatus(eventId);
+      return response['data'];
+    } catch (e) {
+      print('❌ Check registration status error: $e');
+      return {'isRegistered': false};
+    }
+  }
+
+  @override
+  Future<List<Event>> getMyRegisteredEvents() async {
+    try {
+      final response = await remoteDataSource.getMyRegisteredEvents();
+      final data = response['data'] as List? ?? [];
+      return data.map((json) => Event.fromJson(json)).toList();
+    } catch (e) {
+      print('❌ Get registered events error: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getEntryQR(String eventId) async {
+    try {
+      final response = await remoteDataSource.getEntryQR(eventId);
+      return {
+        'qrCode': response['data']['qrCode'],
+        'eventTitle': response['data']['eventTitle'],
+      };
+    } catch (e) {
+      print('❌ Get entry QR error: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> verifyEntryQR(String qrData) async {
+    try {
+      final response = await remoteDataSource.verifyEntryQR(qrData);
+      return response['data'];
+    } catch (e) {
+      print('❌ Verify entry QR error: $e');
+      rethrow;
+    }
+  }
+
+  @override
   Future<Event> createEvent(Map<String, dynamic> eventData) async {
     try {
       final response = await remoteDataSource.createEvent(eventData);
-      print('📦 Create event response: ${response['data']}');
       return Event.fromJson(response['data']);
     } catch (e) {
       print('❌ Create event error: $e');

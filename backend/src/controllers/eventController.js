@@ -1,4 +1,6 @@
 const Event = require('../models/Event');
+const User = require('../models/User');
+const QRCode = require('qrcode');
 const logger = require('../utils/logger');
 
 // ============ CREATE EVENT ============
@@ -19,60 +21,28 @@ exports.createEvent = async (req, res, next) => {
     } = req.body;
 
     console.log('📝 Creating event:', title);
-    console.log('📝 Request body:', JSON.stringify(req.body, null, 2));
 
-    // Validate required fields
-    if (!title) {
+    if (!title || !description) {
       return res.status(400).json({
         success: false,
-        message: 'Title is required',
+        message: 'Title and description are required',
       });
     }
 
-    if (!description) {
+    if (!startDate || !endDate) {
       return res.status(400).json({
         success: false,
-        message: 'Description is required',
+        message: 'Start date and end date are required',
       });
     }
 
-    if (!startDate) {
-      return res.status(400).json({
-        success: false,
-        message: 'Start date is required',
-      });
-    }
-
-    if (!endDate) {
-      return res.status(400).json({
-        success: false,
-        message: 'End date is required',
-      });
-    }
-
-    // Build location object
-    const locationObj = {};
-    if (location) {
-      if (location.venue) locationObj.venue = location.venue;
-      if (location.address) locationObj.address = location.address;
-      if (location.city) locationObj.city = location.city;
-      if (location.country) locationObj.country = location.country;
-      if (location.coordinates) {
-        locationObj.coordinates = {
-          lat: location.coordinates.lat || 0,
-          lng: location.coordinates.lng || 0,
-        };
-      }
-    }
-
-    // Create event
-    const eventData = {
-      title: title.trim(),
-      description: description.trim(),
+    const event = await Event.create({
+      title,
+      description,
       banner: banner || '',
       startDate: new Date(startDate),
       endDate: new Date(endDate),
-      location: locationObj,
+      location: location || {},
       categories: categories || [],
       maxAttendees: maxAttendees || 0,
       registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : null,
@@ -80,13 +50,10 @@ exports.createEvent = async (req, res, next) => {
       isPublic: isPublic !== undefined ? isPublic : true,
       organizer: req.user._id,
       status: 'published',
-    };
+      registeredUsers: [],
+    });
 
-    console.log('📝 Event data:', JSON.stringify(eventData, null, 2));
-
-    const event = await Event.create(eventData);
-
-    console.log('✅ Event created:', event.id, event.title);
+    console.log('✅ Event created:', event._id);
 
     res.status(201).json({
       success: true,
@@ -95,21 +62,6 @@ exports.createEvent = async (req, res, next) => {
     });
   } catch (error) {
     console.error('❌ Create event error:', error);
-    console.error('❌ Error stack:', error.stack);
-    
-    // Handle validation errors
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(err => ({
-        field: err.path,
-        message: err.message
-      }));
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors,
-      });
-    }
-    
     next(error);
   }
 };
@@ -127,27 +79,18 @@ exports.getAllEvents = async (req, res, next) => {
         { description: { $regex: search.trim(), $options: 'i' } },
       ];
     }
-    // Only show public events to non-organizers
-    if (!req.user || req.user.role !== 'organizer') {
-      query.isPublic = true;
-    }
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const events = await Event.find(query)
-      .skip(skip)
+      .skip((parseInt(page) - 1) * parseInt(limit))
       .limit(parseInt(limit))
       .populate('organizer', 'firstName lastName email')
       .sort({ startDate: 1 });
 
     const total = await Event.countDocuments(query);
 
-    // Convert to plain objects with id
-    const eventsWithId = events.map(event => event.toJSON());
-
     res.status(200).json({
       success: true,
-      data: eventsWithId,
+      data: events,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -176,7 +119,7 @@ exports.getEventById = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: event.toJSON(),
+      data: event,
     });
   } catch (error) {
     console.error('❌ Get event by id error:', error);
@@ -195,7 +138,6 @@ exports.updateEvent = async (req, res, next) => {
       });
     }
 
-    // Check if user is organizer or admin
     if (event.organizer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
@@ -214,12 +156,6 @@ exports.updateEvent = async (req, res, next) => {
       if (updates[key] !== undefined) {
         if (key === 'startDate' || key === 'endDate' || key === 'registrationDeadline') {
           event[key] = new Date(updates[key]);
-        } else if (key === 'location' && typeof updates[key] === 'object') {
-          const loc = updates[key];
-          if (loc.venue) event.location.venue = loc.venue;
-          if (loc.address) event.location.address = loc.address;
-          if (loc.city) event.location.city = loc.city;
-          if (loc.country) event.location.country = loc.country;
         } else {
           event[key] = updates[key];
         }
@@ -231,7 +167,7 @@ exports.updateEvent = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Event updated successfully',
-      data: event.toJSON(),
+      data: event,
     });
   } catch (error) {
     console.error('❌ Update event error:', error);
@@ -269,17 +205,15 @@ exports.deleteEvent = async (req, res, next) => {
   }
 };
 
-// ============ GET MY EVENTS ============
+// ============ GET MY EVENTS (Organizer) ============
 exports.getMyEvents = async (req, res, next) => {
   try {
     const events = await Event.find({ organizer: req.user._id })
       .sort({ createdAt: -1 });
 
-    const eventsWithId = events.map(event => event.toJSON());
-
     res.status(200).json({
       success: true,
-      data: eventsWithId,
+      data: events,
     });
   } catch (error) {
     console.error('❌ Get my events error:', error);
@@ -298,12 +232,32 @@ exports.registerForEvent = async (req, res, next) => {
       });
     }
 
+    const userId = req.user._id.toString();
+
+    if (event.registeredUsers && event.registeredUsers.includes(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'You are already registered for this event',
+      });
+    }
+
+    if (!event.registeredUsers) {
+      event.registeredUsers = [];
+    }
+    event.registeredUsers.push(userId);
     event.registeredCount = (event.registeredCount || 0) + 1;
     await event.save();
+
+    console.log(`✅ User ${userId} registered for event ${event._id}`);
 
     res.status(200).json({
       success: true,
       message: 'Registered for event successfully',
+      data: {
+        eventId: event._id,
+        eventTitle: event.title,
+        registered: true,
+      },
     });
   } catch (error) {
     console.error('❌ Register for event error:', error);
@@ -322,8 +276,20 @@ exports.unregisterFromEvent = async (req, res, next) => {
       });
     }
 
+    const userId = req.user._id.toString();
+
+    if (!event.registeredUsers || !event.registeredUsers.includes(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'You are not registered for this event',
+      });
+    }
+
+    event.registeredUsers = event.registeredUsers.filter(id => id !== userId);
     event.registeredCount = Math.max(0, (event.registeredCount || 0) - 1);
     await event.save();
+
+    console.log(`✅ User ${userId} unregistered from event ${event._id}`);
 
     res.status(200).json({
       success: true,
@@ -331,6 +297,199 @@ exports.unregisterFromEvent = async (req, res, next) => {
     });
   } catch (error) {
     console.error('❌ Unregister from event error:', error);
+    next(error);
+  }
+};
+
+// ============ GENERATE ENTRY QR CODE ============
+exports.generateEntryQR = async (req, res, next) => {
+  try {
+    const { eventId } = req.params;
+    const userId = req.user._id;
+
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found',
+      });
+    }
+
+    if (!event.registeredUsers || !event.registeredUsers.includes(userId.toString())) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not registered for this event',
+      });
+    }
+
+    const qrData = JSON.stringify({
+      type: 'event_entry',
+      eventId: event._id.toString(),
+      userId: userId.toString(),
+      eventTitle: event.title,
+      userName: `${req.user.firstName} ${req.user.lastName}`,
+      timestamp: Date.now(),
+    });
+
+    const qrCode = await QRCode.toDataURL(qrData, {
+      errorCorrectionLevel: 'H',
+      width: 400,
+      margin: 4,
+      color: {
+        dark: '#2563EB',
+        light: '#FFFFFF',
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'QR code generated successfully',
+      data: {
+        qrCode: qrCode,
+        eventId: event._id,
+        eventTitle: event.title,
+        userName: `${req.user.firstName} ${req.user.lastName}`,
+      },
+    });
+  } catch (error) {
+    console.error('❌ Generate QR error:', error);
+    next(error);
+  }
+};
+
+// ============ VERIFY QR CODE FOR ENTRY ============
+exports.verifyEntryQR = async (req, res, next) => {
+  try {
+    const { qrData } = req.body;
+
+    if (!qrData) {
+      return res.status(400).json({
+        success: false,
+        message: 'QR data is required',
+      });
+    }
+
+    let data;
+    try {
+      data = JSON.parse(qrData);
+    } catch (e) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid QR code format',
+      });
+    }
+
+    if (data.type !== 'event_entry') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid QR code type',
+      });
+    }
+
+    const event = await Event.findById(data.eventId);
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found',
+      });
+    }
+
+    const user = await User.findById(data.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    if (!event.registeredUsers || !event.registeredUsers.includes(data.userId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'User is not registered for this event',
+      });
+    }
+
+    const qrTime = data.timestamp;
+    const currentTime = Date.now();
+    const hoursDiff = (currentTime - qrTime) / (1000 * 60 * 60);
+    if (hoursDiff > 24) {
+      return res.status(400).json({
+        success: false,
+        message: 'QR code has expired. Please generate a new one.',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'QR code verified successfully',
+      data: {
+        event: {
+          id: event._id,
+          title: event.title,
+        },
+        user: {
+          id: user._id,
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+        },
+        verified: true,
+        timestamp: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error('❌ Verify QR error:', error);
+    res.status(400).json({
+      success: false,
+      message: 'Invalid QR code data',
+    });
+  }
+};
+
+// ============ GET MY REGISTERED EVENTS ============
+exports.getMyRegisteredEvents = async (req, res, next) => {
+  try {
+    const userId = req.user._id.toString();
+    
+    const events = await Event.find({
+      registeredUsers: { $in: [userId] }
+    }).populate('organizer', 'firstName lastName email');
+
+    res.status(200).json({
+      success: true,
+      data: events,
+    });
+  } catch (error) {
+    console.error('❌ Get registered events error:', error);
+    next(error);
+  }
+};
+
+// ============ CHECK REGISTRATION STATUS ============
+exports.checkRegistrationStatus = async (req, res, next) => {
+  try {
+    const { eventId } = req.params;
+    const userId = req.user._id.toString();
+
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found',
+      });
+    }
+
+    const isRegistered = event.registeredUsers && event.registeredUsers.includes(userId);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        isRegistered: isRegistered,
+        eventId: event._id,
+        eventTitle: event.title,
+      },
+    });
+  } catch (error) {
+    console.error('❌ Check registration error:', error);
     next(error);
   }
 };

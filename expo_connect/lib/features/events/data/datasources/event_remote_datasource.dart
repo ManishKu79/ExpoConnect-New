@@ -5,6 +5,7 @@ import '../../../../shared/services/api_service.dart';
 class EventRemoteDataSource {
   final Dio dio = ApiService.dio;
 
+  // ============ PUBLIC ============
   Future<Map<String, dynamic>> getEvents({
     String? status,
     String? search,
@@ -28,6 +29,7 @@ class EventRemoteDataSource {
     return response.data;
   }
 
+  // ============ REGISTRATION ============
   Future<Map<String, dynamic>> registerForEvent(String eventId) async {
     final response = await dio.post(
       '${ApiEndpoints.events}/$eventId/register',
@@ -42,6 +44,37 @@ class EventRemoteDataSource {
     return response.data;
   }
 
+  Future<Map<String, dynamic>> checkRegistrationStatus(String eventId) async {
+    final response = await dio.get(
+      '${ApiEndpoints.events}/$eventId/registration-status',
+    );
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> getMyRegisteredEvents() async {
+    final response = await dio.get(
+      '${ApiEndpoints.events}/my-registered-events',
+    );
+    return response.data;
+  }
+
+  // ============ QR ============
+  Future<Map<String, dynamic>> getEntryQR(String eventId) async {
+    final response = await dio.get(
+      '${ApiEndpoints.events}/$eventId/entry-qr',
+    );
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> verifyEntryQR(String qrData) async {
+    final response = await dio.post(
+      '${ApiEndpoints.events}/verify-qr',
+      data: {'qrData': qrData},
+    );
+    return response.data;
+  }
+
+  // ============ ORGANIZER ============
   Future<Map<String, dynamic>> createEvent(Map<String, dynamic> eventData) async {
     final response = await dio.post(
       ApiEndpoints.events,

@@ -19,6 +19,27 @@ class EventDetailScreen extends ConsumerStatefulWidget {
 
 class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   bool _isRegistered = false;
+  bool _isLoadingRegistration = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkRegistration();
+  }
+
+  Future<void> _checkRegistration() async {
+    try {
+      final repo = ref.read(eventRepositoryProvider);
+      final status = await repo.checkRegistrationStatus(widget.eventId);
+      if (mounted) {
+        setState(() {
+          _isRegistered = status['isRegistered'] ?? false;
+        });
+      }
+    } catch (e) {
+      print('❌ Check registration error: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +83,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                 backgroundColor: isDark ? AppColors.grey900 : Colors.white,
                 leading: IconButton(
                   onPressed: () => context.go('/events'),
+                  padding: const EdgeInsets.all(8),
                   icon: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -267,40 +289,116 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Stats Row
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _StatItem(
-                              icon: Icons.people,
-                              label: 'Attendees',
-                              value: event.registeredCount?.toString() ?? '0',
-                              isDark: isDark,
+                      // Registration Status - SHOW QR BUTTON IF REGISTERED
+                      if (_isRegistered)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.green.withOpacity(0.3),
                             ),
                           ),
-                          Expanded(
-                            child: _StatItem(
-                              icon: Icons.attach_money,
-                              label: 'Price',
-                              value: event.ticketPrice != null 
-                                  ? '\$${event.ticketPrice!.toStringAsFixed(0)}'
-                                  : 'Free',
-                              isDark: isDark,
-                            ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'You are registered!',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.green[700],
+                                      ),
+                                    ),
+                                    Text(
+                                      'Tap Entry QR to get your pass',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.green[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  // Navigate to QR Code screen
+                                  context.go('/event-entry/${event.id}');
+                                },
+                                icon: const Icon(Icons.qr_code, size: 18),
+                                label: const Text('Entry QR'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF2563EB),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          Expanded(
-                            child: _StatItem(
-                              icon: Icons.category,
-                              label: 'Categories',
-                              value: event.categories.isNotEmpty 
-                                  ? event.categories.length.toString() 
-                                  : '0',
-                              isDark: isDark,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
+                        ),
+                      const SizedBox(height: 16),
+
+                      // Register Button - Only show if NOT registered
+                      if (!_isRegistered)
+                        CustomButton(
+                          onPressed: registrationState || _isLoadingRegistration
+                              ? null
+                              : () async {
+                                  setState(() {
+                                    _isLoadingRegistration = true;
+                                  });
+                                  try {
+                                    final repo = ref.read(eventRepositoryProvider);
+                                    await repo.registerForEvent(event.id);
+                                    // Refresh registration status
+                                    final status = await repo.checkRegistrationStatus(widget.eventId);
+                                    if (mounted) {
+                                      setState(() {
+                                        _isRegistered = status['isRegistered'] ?? true;
+                                        _isLoadingRegistration = false;
+                                      });
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('✅ Successfully registered for event!'),
+                                          backgroundColor: Color(0xFF10B981),
+                                        ),
+                                      );
+                                      ref.refresh(eventDetailProvider(widget.eventId));
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      setState(() {
+                                        _isLoadingRegistration = false;
+                                      });
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('❌ Error: $e'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                          text: 'Register for Event',
+                          isLoading: registrationState || _isLoadingRegistration,
+                        ),
+                      const SizedBox(height: 16),
 
                       // Categories
                       if (event.categories.isNotEmpty) ...[
@@ -336,43 +434,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                             );
                           }).toList(),
                         ),
-                        const SizedBox(height: 24),
                       ],
-
-                      // Register Button
-                      CustomButton(
-                        onPressed: registrationState
-                            ? null
-                            : () async {
-                                try {
-                                  await ref.read(eventRegistrationProvider.notifier).register(event.id);
-                                  setState(() {
-                                    _isRegistered = true;
-                                  });
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Successfully registered for event! 🎉'),
-                                        backgroundColor: Color(0xFF10B981),
-                                      ),
-                                    );
-                                    ref.refresh(eventDetailProvider(widget.eventId));
-                                  }
-                                } catch (e) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error: $e'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                        text: _isRegistered ? '✅ Already Registered' : 'Register for Event',
-                        isLoading: registrationState,
-                      ),
-                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
@@ -433,55 +495,6 @@ class _InfoRow extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _StatItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final bool isDark;
-
-  const _StatItem({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.grey800 : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? AppColors.grey700 : AppColors.grey200,
-        ),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 20, color: isDark ? Colors.grey[400] : AppColors.primary),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
-            ),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: isDark ? Colors.grey[400] : const Color(0xFF64748B),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

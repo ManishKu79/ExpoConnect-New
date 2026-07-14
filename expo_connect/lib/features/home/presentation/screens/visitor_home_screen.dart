@@ -17,7 +17,6 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Load events when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(eventListProvider.notifier).refresh();
     });
@@ -30,7 +29,6 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
     final user = authState.user;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Get upcoming events (limit to 3)
     final upcomingEvents = eventsState.take(3).toList();
 
     return Scaffold(
@@ -118,7 +116,6 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                   ),
                   child: TextField(
                     onTap: () {
-                      // Navigate to events with search
                       context.go('/events');
                     },
                     readOnly: true,
@@ -173,10 +170,10 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                             Expanded(
                               child: _StatCard(
                                 icon: Icons.business_center,
-                                label: 'Exhibitors',
+                                label: 'My Events',
                                 value: '0',
                                 color: const Color(0xFF7C3AED),
-                                onTap: () {},
+                                onTap: () => context.go('/my-events'),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -193,7 +190,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Quick Actions
+                        // Quick Actions - FIXED QR SCANNER
                         Text(
                           'Quick Actions',
                           style: TextStyle(
@@ -220,17 +217,18 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                               ),
                               onTap: () {
                                 // Navigate to QR Scanner
+                                context.go('/qr-scanner');
                               },
                             ),
                             _ActionCard(
                               icon: Icons.calendar_today,
-                              label: 'Schedule',
+                              label: 'My Events',
                               color: const Color(0xFF7C3AED),
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF7C3AED), Color(0xFF06B6D4)],
                               ),
                               onTap: () {
-                                context.go('/events');
+                                context.go('/my-events');
                               },
                             ),
                             _ActionCard(

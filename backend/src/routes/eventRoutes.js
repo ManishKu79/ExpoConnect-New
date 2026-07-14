@@ -7,17 +7,23 @@ const eventController = require('../controllers/eventController');
 router.get('/', eventController.getAllEvents);
 router.get('/:id', eventController.getEventById);
 
-// Protected routes
+// Protected routes (require authentication)
 router.use(auth);
+
+// Registration routes
+router.post('/:id/register', eventController.registerForEvent);
+router.delete('/:id/register', eventController.unregisterFromEvent);
+router.get('/:id/registration-status', eventController.checkRegistrationStatus);
+
+// QR Code routes
+router.get('/:id/entry-qr', eventController.generateEntryQR);
+router.post('/verify-qr', eventController.verifyEntryQR);
+router.get('/my-registered-events', eventController.getMyRegisteredEvents);
 
 // Organizer routes
 router.post('/', authorize('organizer', 'admin'), eventController.createEvent);
 router.put('/:id', authorize('organizer', 'admin'), eventController.updateEvent);
 router.delete('/:id', authorize('organizer', 'admin'), eventController.deleteEvent);
 router.get('/my-events', authorize('organizer', 'admin'), eventController.getMyEvents);
-
-// Registration routes
-router.post('/:id/register', eventController.registerForEvent);
-router.delete('/:id/register', eventController.unregisterFromEvent);
 
 module.exports = router;
