@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-// Import route modules - ensure all files exist
+// Import route modules
 const authRoutes = require('./authRoutes');
 const userRoutes = require('./userRoutes');
 const companyRoutes = require('./companyRoutes');

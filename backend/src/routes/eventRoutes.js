@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const { auth, authorize } = require('../middleware/auth');
-const { uploadEventBanner } = require('../middleware/upload');
 const eventController = require('../controllers/eventController');
 
 // Public routes
@@ -10,9 +9,15 @@ router.get('/:id', eventController.getEventById);
 
 // Protected routes
 router.use(auth);
-router.post('/', eventController.createEvent);
-router.put('/:id', eventController.updateEvent);
-router.put('/:id/banner', uploadEventBanner, eventController.uploadBanner);
-router.delete('/:id', eventController.deleteEvent);
+
+// Organizer routes
+router.post('/', authorize('organizer', 'admin'), eventController.createEvent);
+router.put('/:id', authorize('organizer', 'admin'), eventController.updateEvent);
+router.delete('/:id', authorize('organizer', 'admin'), eventController.deleteEvent);
+router.get('/my-events', authorize('organizer', 'admin'), eventController.getMyEvents);
+
+// Registration routes
+router.post('/:id/register', eventController.registerForEvent);
+router.delete('/:id/register', eventController.unregisterFromEvent);
 
 module.exports = router;

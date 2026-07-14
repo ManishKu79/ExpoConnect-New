@@ -59,4 +59,48 @@ class EventRepositoryImpl implements EventRepository {
       rethrow;
     }
   }
+
+  @override
+  Future<Event> createEvent(Map<String, dynamic> eventData) async {
+    try {
+      final response = await remoteDataSource.createEvent(eventData);
+      return Event.fromJson(response['data']);
+    } catch (e) {
+      print('❌ Create event error: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<Event> updateEvent(String eventId, Map<String, dynamic> eventData) async {
+    try {
+      final response = await remoteDataSource.updateEvent(eventId, eventData);
+      return Event.fromJson(response['data']);
+    } catch (e) {
+      print('❌ Update event error: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> deleteEvent(String eventId) async {
+    try {
+      await remoteDataSource.deleteEvent(eventId);
+    } catch (e) {
+      print('❌ Delete event error: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<Event>> getMyEvents() async {
+    try {
+      final response = await remoteDataSource.getMyEvents();
+      final data = response['data'] as List? ?? [];
+      return data.map((json) => Event.fromJson(json)).toList();
+    } catch (e) {
+      print('❌ Get my events error: $e');
+      return [];
+    }
+  }
 }

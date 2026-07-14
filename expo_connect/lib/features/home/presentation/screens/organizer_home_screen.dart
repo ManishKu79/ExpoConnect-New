@@ -6,18 +6,17 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../events/presentation/providers/event_provider.dart';
 import '../../../events/domain/entities/event.dart';
 
-class VisitorHomeScreen extends ConsumerStatefulWidget {
-  const VisitorHomeScreen({super.key});
+class OrganizerHomeScreen extends ConsumerStatefulWidget {
+  const OrganizerHomeScreen({super.key});
 
   @override
-  ConsumerState<VisitorHomeScreen> createState() => _VisitorHomeScreenState();
+  ConsumerState<OrganizerHomeScreen> createState() => _OrganizerHomeScreenState();
 }
 
-class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
+class _OrganizerHomeScreenState extends ConsumerState<OrganizerHomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Load events when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(eventListProvider.notifier).refresh();
     });
@@ -30,10 +29,19 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
     final user = authState.user;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Get upcoming events (limit to 3)
-    final upcomingEvents = eventsState.take(3).toList();
+    // Filter events created by this organizer
+    final myEvents = eventsState.where((e) => e.organizerId == user?.id).toList();
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          context.go('/create-event');
+        },
+        backgroundColor: const Color(0xFF2563EB),
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('Create Event'),
+      ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -58,7 +66,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Hello, ${user?.firstName ?? 'Visitor'} 👋',
+                            'Hello, ${user?.firstName ?? 'Organizer'} 🎪',
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -67,7 +75,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Discover amazing events near you',
+                            'Manage your events and exhibitions',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.white.withOpacity(0.8),
@@ -91,7 +99,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                           backgroundColor: Colors.white.withOpacity(0.2),
                           child: user?.profilePicture == null
                               ? Text(
-                                  user?.initials ?? 'U',
+                                  user?.initials ?? 'O',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -105,43 +113,6 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                   ],
                 ),
               ),
-              // Search Bar
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.2),
-                    ),
-                  ),
-                  child: TextField(
-                    onTap: () {
-                      // Navigate to events with search
-                      context.go('/events');
-                    },
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      hintText: 'Search events, companies...',
-                      hintStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
-                      ),
-                      prefixIcon: Icon(
-                        Icons.search,
-                        color: Colors.white.withOpacity(0.7),
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                    ),
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
               // Main Content
               Expanded(
                 child: Container(
@@ -157,23 +128,23 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Quick Stats
+                        // Stats Row
                         Row(
                           children: [
                             Expanded(
                               child: _StatCard(
                                 icon: Icons.event,
-                                label: 'Events',
-                                value: eventsState.length.toString(),
+                                label: 'My Events',
+                                value: myEvents.length.toString(),
                                 color: const Color(0xFF2563EB),
-                                onTap: () => context.go('/events'),
+                                onTap: () {},
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: _StatCard(
-                                icon: Icons.business_center,
-                                label: 'Exhibitors',
+                                icon: Icons.people,
+                                label: 'Total Attendees',
                                 value: '0',
                                 color: const Color(0xFF7C3AED),
                                 onTap: () {},
@@ -182,9 +153,9 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: _StatCard(
-                                icon: Icons.connect_without_contact,
-                                label: 'Network',
-                                value: '0',
+                                icon: Icons.trending_up,
+                                label: 'Revenue',
+                                value: '\$0',
                                 color: const Color(0xFF06B6D4),
                                 onTap: () {},
                               ),
@@ -212,30 +183,26 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                           childAspectRatio: 0.9,
                           children: [
                             _ActionCard(
-                              icon: Icons.qr_code_scanner,
-                              label: 'Scan QR',
+                              icon: Icons.add_event,
+                              label: 'Create Event',
                               color: const Color(0xFF2563EB),
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
                               ),
-                              onTap: () {
-                                // Navigate to QR Scanner
-                              },
+                              onTap: () => context.go('/create-event'),
                             ),
                             _ActionCard(
-                              icon: Icons.calendar_today,
-                              label: 'Schedule',
+                              icon: Icons.event,
+                              label: 'My Events',
                               color: const Color(0xFF7C3AED),
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF7C3AED), Color(0xFF06B6D4)],
                               ),
-                              onTap: () {
-                                context.go('/events');
-                              },
+                              onTap: () => context.go('/my-events'),
                             ),
                             _ActionCard(
-                              icon: Icons.business_center,
-                              label: 'Exhibitors',
+                              icon: Icons.qr_code_scanner,
+                              label: 'Scan QR',
                               color: const Color(0xFF06B6D4),
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF06B6D4), Color(0xFF2563EB)],
@@ -246,12 +213,12 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Upcoming Events
+                        // My Events List
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Upcoming Events',
+                              'My Events',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -259,7 +226,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                               ),
                             ),
                             TextButton(
-                              onPressed: () => context.go('/events'),
+                              onPressed: () => context.go('/my-events'),
                               child: const Text(
                                 'See All',
                                 style: TextStyle(
@@ -270,7 +237,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                             ),
                           ],
                         ),
-                        if (upcomingEvents.isEmpty)
+                        if (myEvents.isEmpty)
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
@@ -286,19 +253,19 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'No upcoming events',
+                                  'No events created yet',
                                   style: TextStyle(
                                     color: isDark ? Colors.grey[400] : Colors.grey[600],
                                   ),
                                 ),
                                 const SizedBox(height: 8),
                                 ElevatedButton(
-                                  onPressed: () => context.go('/events'),
+                                  onPressed: () => context.go('/create-event'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF2563EB),
                                     foregroundColor: Colors.white,
                                   ),
-                                  child: const Text('Browse Events'),
+                                  child: const Text('Create Your First Event'),
                                 ),
                               ],
                             ),
@@ -307,10 +274,10 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                           ListView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-                            itemCount: upcomingEvents.length,
+                            itemCount: myEvents.length > 3 ? 3 : myEvents.length,
                             itemBuilder: (context, index) {
-                              final event = upcomingEvents[index];
-                              return _EventCard(event: event);
+                              final event = myEvents[index];
+                              return _OrganizerEventCard(event: event);
                             },
                           ),
                       ],
@@ -326,7 +293,6 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
   }
 }
 
-// ============ STAT CARD ============
 class _StatCard extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -395,7 +361,6 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// ============ ACTION CARD ============
 class _ActionCard extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -448,11 +413,10 @@ class _ActionCard extends StatelessWidget {
   }
 }
 
-// ============ EVENT CARD ============
-class _EventCard extends StatelessWidget {
+class _OrganizerEventCard extends StatelessWidget {
   final Event event;
 
-  const _EventCard({required this.event});
+  const _OrganizerEventCard({required this.event});
 
   @override
   Widget build(BuildContext context) {
@@ -520,36 +484,26 @@ class _EventCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Icon(Icons.location_on, size: 12, color: isDark ? Colors.grey[400] : Colors.grey[500]),
-                      const SizedBox(width: 4),
-                      Text(
-                        event.location ?? 'Online',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? Colors.grey[400] : Colors.grey[500],
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: event.status == 'published' || event.status == 'ongoing'
+                              ? Colors.green.withOpacity(0.1)
+                              : Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          event.status.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: event.status == 'published' || event.status == 'ongoing'
+                                ? Colors.green
+                                : Colors.orange,
+                          ),
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: event.status == 'published' || event.status == 'ongoing'
-                          ? Colors.green.withOpacity(0.1)
-                          : Colors.orange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      event.status.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: event.status == 'published' || event.status == 'ongoing'
-                            ? Colors.green
-                            : Colors.orange,
-                      ),
-                    ),
                   ),
                 ],
               ),

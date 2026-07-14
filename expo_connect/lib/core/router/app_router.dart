@@ -10,9 +10,11 @@ import '../../features/auth/presentation/screens/verify_email_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/home/presentation/screens/visitor_home_screen.dart';
 import '../../features/home/presentation/screens/exhibitor_home_screen.dart';
+import '../../features/home/presentation/screens/organizer_home_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/events/presentation/screens/event_list_screen.dart';
 import '../../features/events/presentation/screens/event_detail_screen.dart';
+import '../../features/events/presentation/screens/create_event_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -31,9 +33,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       case 'exhibitor':
         return const ExhibitorHomeScreen();
       case 'organizer':
-        return const HomeScreen();
+        return const OrganizerHomeScreen();
       case 'admin':
-        return const HomeScreen();
+        return const OrganizerHomeScreen();
       case 'sponsor':
         return const HomeScreen();
       case 'speaker':
@@ -118,6 +120,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return EventDetailScreen(eventId: id);
         },
       ),
+      // Organizer routes
+      GoRoute(
+        path: '/create-event',
+        name: 'create-event',
+        builder: (context, state) => const CreateEventScreen(),
+      ),
+      GoRoute(
+        path: '/my-events',
+        name: 'my-events',
+        builder: (context, state) => const EventListScreen(),
+      ),
     ],
   );
 });
@@ -133,4 +146,6 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String events = '/events';
   static const String eventDetail = '/events/:id';
+  static const String createEvent = '/create-event';
+  static const String myEvents = '/my-events';
 }

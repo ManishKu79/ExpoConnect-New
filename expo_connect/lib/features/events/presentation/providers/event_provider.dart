@@ -1,6 +1,8 @@
 ﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/domain.dart';
-import '../../data/data.dart';
+import '../../data/datasources/event_remote_datasource.dart';
+import '../../data/repositories/event_repository_impl.dart';
+import '../../domain/entities/event.dart';
+import '../../domain/repositories/event_repository.dart';
 
 final eventRemoteDataSourceProvider = Provider<EventRemoteDataSource>((ref) {
   return EventRemoteDataSource();
@@ -19,16 +21,25 @@ class EventListNotifier extends StateNotifier<List<Event>> {
   int _page = 1;
   bool _hasMore = true;
   bool _isLoading = false;
+  String _currentSearch = '';
 
   EventListNotifier(this.repository) : super([]);
 
-  Future<void> loadEvents({String? status, String? search}) async {
+  Future<void> loadEvents({String? search}) async {
     if (_isLoading || !_hasMore) return;
     _isLoading = true;
+    
+    // If search changed, reset
+    if (search != null && search != _currentSearch) {
+      _currentSearch = search;
+      _page = 1;
+      _hasMore = true;
+      state = [];
+    }
+    
     try {
       final events = await repository.getEvents(
-        status: status,
-        search: search,
+        search: _currentSearch.isNotEmpty ? _currentSearch : null,
         page: _page,
         limit: 10,
       );
@@ -50,6 +61,7 @@ class EventListNotifier extends StateNotifier<List<Event>> {
     _page = 1;
     _hasMore = true;
     _isLoading = false;
+    _currentSearch = '';
   }
 
   void refresh() {

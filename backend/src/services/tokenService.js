@@ -33,14 +33,6 @@ class TokenService {
   generateResetToken() {
     return crypto.randomBytes(32).toString('hex');
   }
-
-  generateQRCodeToken(userId, eventId) {
-    return jwt.sign(
-      { userId, eventId, type: 'qr_entry' },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-  }
 }
 
 module.exports = new TokenService();

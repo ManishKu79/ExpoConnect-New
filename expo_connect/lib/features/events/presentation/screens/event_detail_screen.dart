@@ -4,23 +4,32 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/custom_button.dart';
-import '../../domain/domain.dart';
 import '../providers/event_provider.dart';
+import '../../domain/entities/event.dart';
 
-class EventDetailScreen extends ConsumerWidget {
+class EventDetailScreen extends ConsumerStatefulWidget {
   final String eventId;
 
   const EventDetailScreen({super.key, required this.eventId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final eventAsync = ref.watch(eventDetailProvider(eventId));
+  ConsumerState<EventDetailScreen> createState() => _EventDetailScreenState();
+}
+
+class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
+  bool _isRegistered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final eventAsync = ref.watch(eventDetailProvider(widget.eventId));
     final registrationState = ref.watch(eventRegistrationProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Event Details'),
+        backgroundColor: isDark ? AppColors.grey900 : Colors.white,
+        elevation: 0,
       ),
       body: eventAsync.when(
         loading: () => const LoadingWidget(),
@@ -36,7 +45,11 @@ class EventDetailScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => ref.refresh(eventDetailProvider(eventId)),
+                onPressed: () => ref.refresh(eventDetailProvider(widget.eventId)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                ),
                 child: const Text('Retry'),
               ),
             ],
@@ -58,7 +71,7 @@ class EventDetailScreen extends ConsumerWidget {
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
                         height: 200,
-                        color: isDark ? AppColors.grey800 : AppColors.grey200,
+                        color: isDark ? AppColors.grey700 : AppColors.grey200,
                         child: const Icon(Icons.broken_image, size: 60),
                       ),
                     ),
@@ -69,7 +82,7 @@ class EventDetailScreen extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -77,7 +90,7 @@ class EventDetailScreen extends ConsumerWidget {
                   event.description,
                   style: TextStyle(
                     fontSize: 16,
-                    color: isDark ? Colors.grey[400] : Colors.grey[700],
+                    color: isDark ? Colors.grey[400] : const Color(0xFF475569),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -90,7 +103,7 @@ class EventDetailScreen extends ConsumerWidget {
                 _InfoRow(
                   icon: Icons.access_time,
                   label: 'Time',
-                  value: '${event.startDate.hour}:${event.startDate.minute.toString().padLeft(2, "0")} - ${event.endDate.hour}:${event.endDate.minute.toString().padLeft(2, "0")}',
+                  value: '${event.startDate.hour}:${event.startDate.minute.toString().padLeft(2, '0')} - ${event.endDate.hour}:${event.endDate.minute.toString().padLeft(2, '0')}',
                   isDark: isDark,
                 ),
                 if (event.location != null)
@@ -128,14 +141,17 @@ class EventDetailScreen extends ConsumerWidget {
                       : () async {
                           try {
                             await ref.read(eventRegistrationProvider.notifier).register(event.id);
+                            setState(() {
+                              _isRegistered = true;
+                            });
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Registered successfully!'),
-                                  backgroundColor: Colors.green,
+                                  content: Text('Successfully registered for event! 🎉'),
+                                  backgroundColor: Color(0xFF10B981),
                                 ),
                               );
-                              ref.refresh(eventDetailProvider(eventId));
+                              ref.refresh(eventDetailProvider(widget.eventId));
                             }
                           } catch (e) {
                             if (context.mounted) {
@@ -148,7 +164,7 @@ class EventDetailScreen extends ConsumerWidget {
                             }
                           }
                         },
-                  text: 'Register for Event',
+                  text: _isRegistered ? 'Already Registered' : 'Register for Event',
                   isLoading: registrationState,
                 ),
                 const SizedBox(height: 16),
@@ -186,14 +202,14 @@ class _InfoRow extends StatelessWidget {
             '$label: ',
             style: TextStyle(
               fontWeight: FontWeight.w600,
-              color: isDark ? Colors.grey[300] : Colors.grey[700],
+              color: isDark ? Colors.grey[300] : const Color(0xFF334155),
             ),
           ),
           Expanded(
             child: Text(
               value,
               style: TextStyle(
-                color: isDark ? Colors.grey[400] : Colors.grey[700],
+                color: isDark ? Colors.grey[400] : const Color(0xFF475569),
               ),
             ),
           ),

@@ -35,6 +35,7 @@ const EventSchema = new mongoose.Schema({
   },
   banner: {
     type: String,
+    default: '',
   },
   categories: [String],
   status: {
@@ -48,11 +49,16 @@ const EventSchema = new mongoose.Schema({
   },
   maxAttendees: {
     type: Number,
+    default: 0,
   },
   registrationDeadline: {
     type: Date,
   },
   ticketPrice: {
+    type: Number,
+    default: 0,
+  },
+  registeredCount: {
     type: Number,
     default: 0,
   },

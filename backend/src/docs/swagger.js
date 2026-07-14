@@ -6,11 +6,7 @@ const options = {
     info: {
       title: 'ExpoConnect API',
       version: '1.0.0',
-      description: 'ExpoConnect - Next Generation Business Expo Management Platform API',
-      contact: {
-        name: 'ExpoConnect Team',
-        email: 'support@expoconnect.com',
-      },
+      description: 'ExpoConnect - Business Expo Management Platform API',
     },
     servers: [
       {
@@ -26,77 +22,6 @@ const options = {
           bearerFormat: 'JWT',
         },
       },
-      schemas: {
-        User: {
-          type: 'object',
-          properties: {
-            _id: { type: 'string' },
-            firstName: { type: 'string' },
-            lastName: { type: 'string' },
-            email: { type: 'string' },
-            role: { type: 'string' },
-            profilePicture: { type: 'string' },
-            isEmailVerified: { type: 'boolean' },
-            createdAt: { type: 'string', format: 'date-time' },
-          },
-        },
-        Company: {
-          type: 'object',
-          properties: {
-            _id: { type: 'string' },
-            name: { type: 'string' },
-            description: { type: 'string' },
-            logo: { type: 'string' },
-            industry: { type: 'string' },
-            isVerified: { type: 'boolean' },
-            reputationScore: { type: 'number' },
-          },
-        },
-        Event: {
-          type: 'object',
-          properties: {
-            _id: { type: 'string' },
-            title: { type: 'string' },
-            description: { type: 'string' },
-            startDate: { type: 'string', format: 'date-time' },
-            endDate: { type: 'string', format: 'date-time' },
-            status: { type: 'string' },
-            banner: { type: 'string' },
-          },
-        },
-        AuthResponse: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                user: { $ref: '#/components/schemas/User' },
-                token: { type: 'string' },
-                refreshToken: { type: 'string' },
-              },
-            },
-          },
-        },
-        ErrorResponse: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
-            errors: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  field: { type: 'string' },
-                  message: { type: 'string' },
-                },
-              },
-            },
-          },
-        },
-      },
     },
     security: [
       {
@@ -104,7 +29,7 @@ const options = {
       },
     ],
   },
-  apis: ['./src/routes/*.js', './src/controllers/*.js'],
+  apis: ['./src/routes/*.js'],
 };
 
 const swaggerSpec = swaggerJsdoc(options);

@@ -1,14 +1,13 @@
 const Event = require('../models/Event');
-const Hall = require('../models/Hall');
-const Stall = require('../models/Stall');
-const uploadService = require('../services/uploadService');
 const logger = require('../utils/logger');
 
+// ============ CREATE EVENT ============
 exports.createEvent = async (req, res, next) => {
   try {
     const {
       title,
       description,
+      banner,
       startDate,
       endDate,
       location,
@@ -19,19 +18,39 @@ exports.createEvent = async (req, res, next) => {
       isPublic,
     } = req.body;
 
+    console.log('📝 Creating event:', title);
+
+    if (!title || !description) {
+      return res.status(400).json({
+        success: false,
+        message: 'Title and description are required',
+      });
+    }
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date and end date are required',
+      });
+    }
+
     const event = await Event.create({
       title,
       description,
+      banner: banner || '',
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      location: location || {},
+      categories: categories || [],
+      maxAttendees: maxAttendees || 0,
+      registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : null,
+      ticketPrice: ticketPrice || 0,
+      isPublic: isPublic !== undefined ? isPublic : true,
       organizer: req.user._id,
-      startDate,
-      endDate,
-      location,
-      categories,
-      maxAttendees,
-      registrationDeadline,
-      ticketPrice,
-      isPublic,
+      status: 'published',
     });
+
+    console.log('✅ Event created:', event._id);
 
     res.status(201).json({
       success: true,
@@ -39,31 +58,28 @@ exports.createEvent = async (req, res, next) => {
       data: event,
     });
   } catch (error) {
-    logger.error(`Create event error: ${error.message}`);
+    console.error('❌ Create event error:', error);
     next(error);
   }
 };
 
+// ============ GET ALL EVENTS ============
 exports.getAllEvents = async (req, res, next) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    const { status, search, page = 1, limit = 10 } = req.query;
 
     const query = {};
-    if (req.query.status) query.status = req.query.status;
-    if (req.query.isPublic !== undefined) query.isPublic = req.query.isPublic === 'true';
-    if (req.query.organizer) query.organizer = req.query.organizer;
-    if (req.query.search) {
+    if (status) query.status = status;
+    if (search) {
       query.$or = [
-        { title: { $regex: req.query.search, $options: 'i' } },
-        { description: { $regex: req.query.search, $options: 'i' } },
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
       ];
     }
 
     const events = await Event.find(query)
-      .skip(skip)
-      .limit(limit)
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
       .populate('organizer', 'firstName lastName email')
       .sort({ startDate: 1 });
 
@@ -73,18 +89,19 @@ exports.getAllEvents = async (req, res, next) => {
       success: true,
       data: events,
       pagination: {
-        page,
-        limit,
+        page: parseInt(page),
+        limit: parseInt(limit),
         total,
         pages: Math.ceil(total / limit),
       },
     });
   } catch (error) {
-    logger.error(`Get all events error: ${error.message}`);
+    console.error('❌ Get events error:', error);
     next(error);
   }
 };
 
+// ============ GET EVENT BY ID ============
 exports.getEventById = async (req, res, next) => {
   try {
     const event = await Event.findById(req.params.id)
@@ -102,11 +119,12 @@ exports.getEventById = async (req, res, next) => {
       data: event,
     });
   } catch (error) {
-    logger.error(`Get event by id error: ${error.message}`);
+    console.error('❌ Get event by id error:', error);
     next(error);
   }
 };
 
+// ============ UPDATE EVENT ============
 exports.updateEvent = async (req, res, next) => {
   try {
     const event = await Event.findById(req.params.id);
@@ -117,11 +135,7 @@ exports.updateEvent = async (req, res, next) => {
       });
     }
 
-    // Check if user is organizer or admin
-    if (
-      event.organizer.toString() !== req.user._id.toString() &&
-      req.user.role !== 'admin'
-    ) {
+    if (event.organizer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'You do not have permission to update this event',
@@ -129,8 +143,20 @@ exports.updateEvent = async (req, res, next) => {
     }
 
     const updates = req.body;
-    Object.keys(updates).forEach(key => {
-      event[key] = updates[key];
+    const allowedUpdates = [
+      'title', 'description', 'banner', 'startDate', 'endDate',
+      'location', 'categories', 'maxAttendees', 'registrationDeadline',
+      'ticketPrice', 'isPublic', 'status'
+    ];
+
+    allowedUpdates.forEach(key => {
+      if (updates[key] !== undefined) {
+        if (key === 'startDate' || key === 'endDate' || key === 'registrationDeadline') {
+          event[key] = new Date(updates[key]);
+        } else {
+          event[key] = updates[key];
+        }
+      }
     });
 
     await event.save();
@@ -141,70 +167,12 @@ exports.updateEvent = async (req, res, next) => {
       data: event,
     });
   } catch (error) {
-    logger.error(`Update event error: ${error.message}`);
+    console.error('❌ Update event error:', error);
     next(error);
   }
 };
 
-exports.uploadBanner = async (req, res, next) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'Banner file is required',
-      });
-    }
-
-    const event = await Event.findById(req.params.id);
-    if (!event) {
-      return res.status(404).json({
-        success: false,
-        message: 'Event not found',
-      });
-    }
-
-    // Check permission
-    if (
-      event.organizer.toString() !== req.user._id.toString() &&
-      req.user.role !== 'admin'
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: 'You do not have permission to update this event',
-      });
-    }
-
-    // Delete old banner if exists
-    if (event.banner) {
-      try {
-        const publicId = event.banner.split('/').pop().split('.')[0];
-        await uploadService.deleteFromCloudinary(`expoconnect/events/${publicId}`);
-      } catch (error) {
-        logger.warn(`Failed to delete old banner: ${error.message}`);
-      }
-    }
-
-    const uploadResult = await uploadService.uploadToCloudinary(req.file.buffer, {
-      folder: 'expoconnect/events',
-      transformation: [
-        { width: 1200, height: 600, crop: 'limit' },
-      ],
-    });
-
-    event.banner = uploadResult.url;
-    await event.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Event banner updated successfully',
-      data: { banner: event.banner },
-    });
-  } catch (error) {
-    logger.error(`Upload banner error: ${error.message}`);
-    next(error);
-  }
-};
-
+// ============ DELETE EVENT ============
 exports.deleteEvent = async (req, res, next) => {
   try {
     const event = await Event.findById(req.params.id);
@@ -215,20 +183,12 @@ exports.deleteEvent = async (req, res, next) => {
       });
     }
 
-    // Check permission
-    if (
-      event.organizer.toString() !== req.user._id.toString() &&
-      req.user.role !== 'admin'
-    ) {
+    if (event.organizer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'You do not have permission to delete this event',
       });
     }
-
-    // Delete associated halls and stalls
-    await Hall.deleteMany({ event: event._id });
-    await Stall.deleteMany({ event: event._id });
 
     await event.remove();
 
@@ -237,7 +197,71 @@ exports.deleteEvent = async (req, res, next) => {
       message: 'Event deleted successfully',
     });
   } catch (error) {
-    logger.error(`Delete event error: ${error.message}`);
+    console.error('❌ Delete event error:', error);
+    next(error);
+  }
+};
+
+// ============ GET MY EVENTS ============
+exports.getMyEvents = async (req, res, next) => {
+  try {
+    const events = await Event.find({ organizer: req.user._id })
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: events,
+    });
+  } catch (error) {
+    console.error('❌ Get my events error:', error);
+    next(error);
+  }
+};
+
+// ============ REGISTER FOR EVENT ============
+exports.registerForEvent = async (req, res, next) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found',
+      });
+    }
+
+    event.registeredCount = (event.registeredCount || 0) + 1;
+    await event.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Registered for event successfully',
+    });
+  } catch (error) {
+    console.error('❌ Register for event error:', error);
+    next(error);
+  }
+};
+
+// ============ UNREGISTER FROM EVENT ============
+exports.unregisterFromEvent = async (req, res, next) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found',
+      });
+    }
+
+    event.registeredCount = Math.max(0, (event.registeredCount || 0) - 1);
+    await event.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Unregistered from event successfully',
+    });
+  } catch (error) {
+    console.error('❌ Unregister from event error:', error);
     next(error);
   }
 };

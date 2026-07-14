@@ -10,4 +10,10 @@ abstract class EventRepository {
   Future<Event> getEventById(String id);
   Future<void> registerForEvent(String eventId);
   Future<void> unregisterFromEvent(String eventId);
+  
+  // Organizer methods
+  Future<Event> createEvent(Map<String, dynamic> eventData);
+  Future<Event> updateEvent(String eventId, Map<String, dynamic> eventData);
+  Future<void> deleteEvent(String eventId);
+  Future<List<Event>> getMyEvents();
 }

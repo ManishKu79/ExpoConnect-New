@@ -2,16 +2,14 @@ const { body } = require('express-validator');
 
 const registerValidator = [
   body('firstName')
-    .optional({ checkFalsy: true })
+    .optional()
     .isLength({ min: 1, max: 50 })
-    .withMessage('First name must be between 1 and 50 characters')
-    .default('User'),
+    .withMessage('First name must be between 1 and 50 characters'),
   
   body('lastName')
-    .optional({ checkFalsy: true })
+    .optional()
     .isLength({ min: 1, max: 50 })
-    .withMessage('Last name must be between 1 and 50 characters')
-    .default('Name'),
+    .withMessage('Last name must be between 1 and 50 characters'),
   
   body('email')
     .notEmpty()
@@ -29,14 +27,12 @@ const registerValidator = [
   body('role')
     .optional()
     .isIn(['visitor', 'exhibitor', 'organizer', 'sponsor', 'speaker', 'investor'])
-    .withMessage('Invalid role selected')
-    .default('visitor'),
+    .withMessage('Invalid role selected'),
   
   body('phone')
     .optional()
     .matches(/^\+?[1-9]\d{1,14}$/)
-    .withMessage('Please provide a valid phone number')
-    .default(''),
+    .withMessage('Please provide a valid phone number'),
 ];
 
 const loginValidator = [

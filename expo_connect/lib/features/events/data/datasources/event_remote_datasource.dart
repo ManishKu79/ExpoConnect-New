@@ -15,7 +15,7 @@ class EventRemoteDataSource {
       ApiEndpoints.events,
       queryParameters: {
         if (status != null) 'status': status,
-        if (search != null) 'search': search,
+        if (search != null && search.isNotEmpty) 'search': search,
         'page': page,
         'limit': limit,
       },
@@ -29,12 +29,16 @@ class EventRemoteDataSource {
   }
 
   Future<Map<String, dynamic>> registerForEvent(String eventId) async {
-    final response = await dio.post('${ApiEndpoints.events}/$eventId/register');
+    final response = await dio.post(
+      '${ApiEndpoints.events}/$eventId/register',
+    );
     return response.data;
   }
 
   Future<Map<String, dynamic>> unregisterFromEvent(String eventId) async {
-    final response = await dio.delete('${ApiEndpoints.events}/$eventId/register');
+    final response = await dio.delete(
+      '${ApiEndpoints.events}/$eventId/register',
+    );
     return response.data;
   }
 }

@@ -9,7 +9,7 @@ const auth = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required. Please provide a valid token.',
+        message: 'Authentication required',
       });
     }
 
@@ -17,7 +17,7 @@ const auth = async (req, res, next) => {
     if (!decoded) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid or expired token. Please login again.',
+        message: 'Invalid or expired token',
       });
     }
 
@@ -28,14 +28,14 @@ const auth = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'User not found. Token may be invalid.',
+        message: 'User not found',
       });
     }
 
     if (!user.isActive) {
       return res.status(403).json({
         success: false,
-        message: 'Your account has been deactivated. Please contact support.',
+        message: 'Your account has been deactivated',
       });
     }
 
@@ -45,7 +45,7 @@ const auth = async (req, res, next) => {
     logger.error(`Auth middleware error: ${error.message}`);
     return res.status(401).json({
       success: false,
-      message: 'Authentication failed. Please try again.',
+      message: 'Authentication failed',
     });
   }
 };
@@ -55,7 +55,7 @@ const authorize = (...roles) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required.',
+        message: 'Authentication required',
       });
     }
 
