@@ -33,12 +33,17 @@ const LeadSchema = new mongoose.Schema({
     enum: ['new', 'contacted', 'qualified', 'lost', 'won'],
     default: 'new',
   },
-  notes: String,
-  followUpDate: Date,
+  notes: {
+    type: String,
+    default: '',
+  },
+  followUpDate: {
+    type: Date,
+  },
   interactions: [{
     type: {
       type: String,
-      enum: ['visit', 'message', 'meeting', 'call', 'email'],
+      enum: ['visit', 'message', 'meeting', 'call', 'email', 'qr_scan'],
     },
     description: String,
     date: {
@@ -46,6 +51,11 @@ const LeadSchema = new mongoose.Schema({
       default: Date.now,
     },
   }],
+  source: {
+    type: String,
+    enum: ['qr_scan', 'visit', 'manual', 'recommendation'],
+    default: 'manual',
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -57,5 +67,6 @@ const LeadSchema = new mongoose.Schema({
 LeadSchema.index({ exhibitor: 1, visitor: 1 }, { unique: true });
 LeadSchema.index({ event: 1 });
 LeadSchema.index({ score: -1 });
+LeadSchema.index({ status: 1 });
 
 module.exports = mongoose.model('Lead', LeadSchema);

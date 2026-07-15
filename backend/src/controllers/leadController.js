@@ -1,82 +1,163 @@
 const Lead = require('../models/Lead');
+const Event = require('../models/Event');
 const User = require('../models/User');
 const Company = require('../models/Company');
-const aiService = require('../services/aiService');
+const notificationController = require('./notificationController');
 const logger = require('../utils/logger');
-const Event = require('../models/Event');
 
+// ============ CREATE LEAD ============
 exports.createLead = async (req, res, next) => {
   try {
-    const { visitorId, eventId, interestLevel, notes } = req.body;
-    
+    const { visitorId, eventId, interestLevel, notes, source } = req.body;
+
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found',
+      });
+    }
+
+    const visitor = await User.findById(visitorId);
+    if (!visitor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Visitor not found',
+      });
+    }
+
+    // Check if lead already exists
+    const existingLead = await Lead.findOne({
+      exhibitor: req.user.company,
+      visitor: visitorId,
+      event: eventId,
+    });
+
+    if (existingLead) {
+      return res.status(400).json({
+        success: false,
+        message: 'Lead already exists for this visitor',
+      });
+    }
+
     const lead = await Lead.create({
       exhibitor: req.user.company,
       visitor: visitorId,
       event: eventId,
-      interestLevel,
-      notes,
+      interestLevel: interestLevel || 5,
+      notes: notes || '',
+      source: source || 'manual',
       interactions: [{
-        type: 'visit',
-        description: 'Initial interaction',
+        type: source === 'qr_scan' ? 'qr_scan' : 'visit',
+        description: source === 'qr_scan' ? 'Lead captured via QR scan' : 'Lead created manually',
       }],
     });
 
-    // Score the lead
-    await aiService.scoreLead(lead._id);
+    // Calculate initial score
+    await exports.scoreLead(lead._id);
 
-    // Get follow-up suggestions
-    const suggestions = await aiService.generateFollowUpSuggestions(lead._id);
+    // Send notification to visitor
+    const company = await Company.findById(req.user.company);
+    await notificationController.createNotification(
+      visitorId,
+      'lead',
+      'New Lead',
+      `${company?.name || 'An exhibitor'} has shown interest in you`,
+      { leadId: lead._id.toString() }
+    );
 
     res.status(201).json({
       success: true,
       message: 'Lead created successfully',
-      data: { lead, suggestions },
+      data: lead,
     });
   } catch (error) {
-    logger.error(`Create lead error: ${error.message}`);
+    console.error('❌ Create lead error:', error);
     next(error);
   }
 };
 
+// ============ GET LEADS ============
 exports.getLeads = async (req, res, next) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    const { eventId, status, page = 1, limit = 20 } = req.query;
 
-    const query = {};
-    if (req.user.role === 'exhibitor') {
-      query.exhibitor = req.user.company;
-    }
-    if (req.query.status) query.status = req.query.status;
-    if (req.query.eventId) query.event = req.query.eventId;
+    const query = { exhibitor: req.user.company };
+    if (eventId) query.event = eventId;
+    if (status) query.status = status;
 
     const leads = await Lead.find(query)
-      .skip(skip)
-      .limit(limit)
       .populate('visitor', 'firstName lastName email profilePicture')
-      .populate('exhibitor', 'name logo')
-      .populate('event', 'title')
-      .sort({ score: -1, createdAt: -1 });
+      .populate('event', 'title startDate')
+      .sort({ score: -1, createdAt: -1 })
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .limit(parseInt(limit));
 
     const total = await Lead.countDocuments(query);
 
+    // Calculate statistics
+    const stats = {
+      total: total,
+      new: await Lead.countDocuments({ ...query, status: 'new' }),
+      contacted: await Lead.countDocuments({ ...query, status: 'contacted' }),
+      qualified: await Lead.countDocuments({ ...query, status: 'qualified' }),
+      won: await Lead.countDocuments({ ...query, status: 'won' }),
+      lost: await Lead.countDocuments({ ...query, status: 'lost' }),
+    };
+
     res.status(200).json({
       success: true,
-      data: leads,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
+      data: {
+        leads,
+        stats,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / parseInt(limit)),
+        },
       },
     });
   } catch (error) {
-    logger.error(`Get leads error: ${error.message}`);
+    console.error('❌ Get leads error:', error);
     next(error);
   }
 };
 
+// ============ GET LEAD BY ID ============
+exports.getLeadById = async (req, res, next) => {
+  try {
+    const lead = await Lead.findById(req.params.id)
+      .populate('visitor', 'firstName lastName email profilePicture phone bio')
+      .populate('event', 'title startDate location')
+      .populate('exhibitor', 'name logo');
+
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lead not found',
+      });
+    }
+
+    // Check if user is the exhibitor or admin
+    if (lead.exhibitor._id.toString() !== req.user.company?.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to view this lead',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: lead,
+    });
+  } catch (error) {
+    console.error('❌ Get lead by id error:', error);
+    next(error);
+  }
+};
+
+// ============ UPDATE LEAD ============
 exports.updateLead = async (req, res, next) => {
   try {
     const lead = await Lead.findById(req.params.id);
@@ -87,7 +168,6 @@ exports.updateLead = async (req, res, next) => {
       });
     }
 
-    // Check ownership
     if (lead.exhibitor.toString() !== req.user.company?.toString() && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
@@ -96,15 +176,27 @@ exports.updateLead = async (req, res, next) => {
     }
 
     const updates = req.body;
-    Object.keys(updates).forEach(key => {
-      lead[key] = updates[key];
+    const allowedUpdates = ['interestLevel', 'status', 'notes', 'followUpDate'];
+
+    allowedUpdates.forEach(key => {
+      if (updates[key] !== undefined) {
+        lead[key] = updates[key];
+      }
     });
 
-    if (updates.interestLevel) {
-      await aiService.scoreLead(lead._id);
+    if (updates.status && updates.status !== lead.status) {
+      lead.interactions.push({
+        type: 'message',
+        description: `Status changed to ${updates.status}`,
+      });
     }
 
     await lead.save();
+
+    // Recalculate score if interest level changed
+    if (updates.interestLevel) {
+      await exports.scoreLead(lead._id);
+    }
 
     res.status(200).json({
       success: true,
@@ -112,45 +204,54 @@ exports.updateLead = async (req, res, next) => {
       data: lead,
     });
   } catch (error) {
-    logger.error(`Update lead error: ${error.message}`);
+    console.error('❌ Update lead error:', error);
     next(error);
   }
 };
 
-exports.scoreLead = async (req, res, next) => {
+// ============ SCORE LEAD ============
+exports.scoreLead = async (leadId) => {
   try {
-    const result = await aiService.scoreLead(req.params.id);
-    res.status(200).json({
-      success: true,
-      data: result,
-    });
+    const lead = await Lead.findById(leadId);
+    if (!lead) return null;
+
+    // Calculate score based on multiple factors
+    let score = 0;
+
+    // Interest level (1-10) -> max 40 points
+    score += (lead.interestLevel / 10) * 40;
+
+    // Number of interactions -> max 30 points
+    const interactionCount = lead.interactions?.length || 0;
+    score += Math.min(interactionCount * 5, 30);
+
+    // Status weight
+    const statusWeights = {
+      'new': 0,
+      'contacted': 10,
+      'qualified': 20,
+      'won': 30,
+      'lost': 0,
+    };
+    score += statusWeights[lead.status] || 0;
+
+    // Cap at 100
+    lead.score = Math.min(Math.round(score), 100);
+    await lead.save();
+
+    return lead.score;
   } catch (error) {
-    logger.error(`Score lead error: ${error.message}`);
-    next(error);
+    console.error('❌ Score lead error:', error);
+    return null;
   }
 };
 
-exports.getLeadRecommendations = async (req, res, next) => {
+// ============ ADD INTERACTION ============
+exports.addInteraction = async (req, res, next) => {
   try {
-    const recommendations = await aiService.getRecommendations(req.user._id);
-    res.status(200).json({
-      success: true,
-      data: recommendations,
-    });
-  } catch (error) {
-    logger.error(`Get lead recommendations error: ${error.message}`);
-    next(error);
-  }
-};
+    const { type, description } = req.body;
 
-// Add this method to leadController.js
-exports.getLeadById = async (req, res, next) => {
-  try {
-    const lead = await Lead.findById(req.params.id)
-      .populate('visitor', 'firstName lastName email profilePicture')
-      .populate('exhibitor', 'name logo')
-      .populate('event', 'title');
-
+    const lead = await Lead.findById(req.params.id);
     if (!lead) {
       return res.status(404).json({
         success: false,
@@ -158,16 +259,33 @@ exports.getLeadById = async (req, res, next) => {
       });
     }
 
+    if (lead.exhibitor.toString() !== req.user.company?.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to update this lead',
+      });
+    }
+
+    lead.interactions.push({
+      type: type || 'message',
+      description: description || 'New interaction',
+    });
+
+    await lead.save();
+    await exports.scoreLead(lead._id);
+
     res.status(200).json({
       success: true,
+      message: 'Interaction added successfully',
       data: lead,
     });
   } catch (error) {
-    logger.error(`Get lead by id error: ${error.message}`);
+    console.error('❌ Add interaction error:', error);
     next(error);
   }
 };
 
+// ============ DELETE LEAD ============
 exports.deleteLead = async (req, res, next) => {
   try {
     const lead = await Lead.findById(req.params.id);
@@ -178,7 +296,6 @@ exports.deleteLead = async (req, res, next) => {
       });
     }
 
-    // Check ownership
     if (lead.exhibitor.toString() !== req.user.company?.toString() && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
@@ -186,14 +303,49 @@ exports.deleteLead = async (req, res, next) => {
       });
     }
 
-    await lead.remove();
+    await lead.deleteOne();
 
     res.status(200).json({
       success: true,
       message: 'Lead deleted successfully',
     });
   } catch (error) {
-    logger.error(`Delete lead error: ${error.message}`);
+    console.error('❌ Delete lead error:', error);
+    next(error);
+  }
+};
+
+// ============ GET LEAD STATS ============
+exports.getLeadStats = async (req, res, next) => {
+  try {
+    const { eventId } = req.params;
+    const companyId = req.user.company;
+
+    const query = { exhibitor: companyId };
+    if (eventId) query.event = eventId;
+
+    const stats = {
+      total: await Lead.countDocuments(query),
+      new: await Lead.countDocuments({ ...query, status: 'new' }),
+      contacted: await Lead.countDocuments({ ...query, status: 'contacted' }),
+      qualified: await Lead.countDocuments({ ...query, status: 'qualified' }),
+      won: await Lead.countDocuments({ ...query, status: 'won' }),
+      lost: await Lead.countDocuments({ ...query, status: 'lost' }),
+      avgScore: 0,
+    };
+
+    const leads = await Lead.find(query).select('score');
+    if (leads.length > 0) {
+      const totalScore = leads.reduce((sum, l) => sum + (l.score || 0), 0);
+      stats.avgScore = Math.round(totalScore / leads.length);
+    }
+
+    res.status(200).json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    console.error('❌ Get lead stats error:', error);
     next(error);
   }
 };

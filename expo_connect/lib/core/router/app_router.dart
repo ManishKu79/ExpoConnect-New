@@ -23,6 +23,9 @@ import '../../features/notifications/presentation/screens/notifications_screen.d
 import '../../features/analytics/presentation/screens/analytics_dashboard_screen.dart';
 import '../../features/analytics/presentation/screens/event_analytics_detail_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/leads/presentation/screens/lead_list_screen.dart';
+import '../../features/leads/presentation/screens/lead_detail_screen.dart';
+
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   // Helper to get the correct home screen based on role
@@ -188,6 +191,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return EventAnalyticsDetailScreen(eventId: id);
         },
       ),
+
+      GoRoute(
+  path: '/leads',
+  name: 'leads',
+  builder: (context, state) => const LeadListScreen(),
+),
+GoRoute(
+  path: '/leads/:id',
+  name: 'lead-detail',
+  builder: (context, state) {
+    final id = state.pathParameters['id']!;
+    return LeadDetailScreen(leadId: id);
+  },
+),
     ],
   );
 });

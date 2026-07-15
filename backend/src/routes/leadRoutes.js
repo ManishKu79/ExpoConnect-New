@@ -6,13 +6,13 @@ const leadController = require('../controllers/leadController');
 // All routes require authentication
 router.use(auth);
 
-// Lead routes
-router.post('/', leadController.createLead);
-router.get('/', leadController.getLeads);
-router.get('/recommendations', leadController.getLeadRecommendations);
-router.get('/:id', leadController.getLeadById);
-router.put('/:id', leadController.updateLead);
-router.get('/:id/score', leadController.scoreLead);
-router.delete('/:id', leadController.deleteLead);
+// Lead routes (exhibitor only)
+router.post('/', authorize('exhibitor', 'admin'), leadController.createLead);
+router.get('/', authorize('exhibitor', 'admin'), leadController.getLeads);
+router.get('/stats/:eventId', authorize('exhibitor', 'admin'), leadController.getLeadStats);
+router.get('/:id', authorize('exhibitor', 'admin'), leadController.getLeadById);
+router.put('/:id', authorize('exhibitor', 'admin'), leadController.updateLead);
+router.post('/:id/interaction', authorize('exhibitor', 'admin'), leadController.addInteraction);
+router.delete('/:id', authorize('exhibitor', 'admin'), leadController.deleteLead);
 
 module.exports = router;

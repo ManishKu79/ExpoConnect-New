@@ -18,7 +18,6 @@ const StallSchema = new mongoose.Schema({
   company: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Company',
-    // optional until assigned
   },
   size: {
     type: String,
@@ -39,7 +38,11 @@ const StallSchema = new mongoose.Schema({
   },
   features: [String],
   qrCode: {
-    type: String, // URL or data
+    type: String,
+  },
+  description: {
+    type: String,
+    default: '',
   },
   createdAt: {
     type: Date,
