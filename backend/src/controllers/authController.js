@@ -73,25 +73,42 @@ exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    console.log('🔐 Login attempt:', email);
+    console.log('🔐 ===== LOGIN ATTEMPT =====');
+    console.log('📝 Email:', email);
+    console.log('📝 Password length:', password?.length);
 
     if (!email || !password) {
+      console.log('❌ Missing email or password');
       return res.status(400).json({
         success: false,
         message: 'Email and password are required',
       });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+    // Find user with password included
+    const user = await User.findOne({ 
+      email: email.toLowerCase() 
+    }).select('+password');
+
     if (!user) {
+      console.log('❌ User not found:', email);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials',
       });
     }
 
+    console.log('📝 User found:', user.email);
+    console.log('📝 User role:', user.role);
+    console.log('📝 User active:', user.isActive);
+    console.log('📝 User verified:', user.isEmailVerified);
+
+    // Check password
     const isMatch = await user.matchPassword(password);
+    console.log('📝 Password match result:', isMatch);
+
     if (!isMatch) {
+      console.log('❌ Password mismatch for:', email);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials',
@@ -113,7 +130,9 @@ exports.login = async (req, res, next) => {
     const token = tokenService.generateToken(user._id);
     const refreshToken = tokenService.generateRefreshToken(user._id);
 
-    res.status(200).json({
+    console.log('📝 Token generated:', token ? 'Yes' : 'No');
+
+    const responseData = {
       success: true,
       message: 'Login successful',
       data: {
@@ -127,10 +146,12 @@ exports.login = async (req, res, next) => {
           profilePicture: user.profilePicture,
           phone: user.phone,
         },
-        token,
-        refreshToken,
+        token: token,
+        refreshToken: refreshToken,
       },
-    });
+    };
+
+    res.status(200).json(responseData);
   } catch (error) {
     console.error('❌ Login error:', error);
     res.status(500).json({

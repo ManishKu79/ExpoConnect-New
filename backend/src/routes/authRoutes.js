@@ -26,6 +26,5 @@ router.put('/profile', auth, authController.updateProfile);
 router.put('/profile/:id', auth, authController.updateProfile);
 router.post('/change-password', auth, authController.changePassword);
 router.delete('/account', auth, authController.deleteAccount);
-router.delete('/account/:id', auth, authController.deleteAccount);
 
 module.exports = router;
