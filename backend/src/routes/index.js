@@ -17,6 +17,7 @@ const documentRoutes = require('./documentRoutes');
 const marketplaceRoutes = require('./marketplaceRoutes');
 const aiRoutes = require('./aiRoutes');
 const uploadRoutes = require('./uploadRoutes');
+const adminRoutes = require('./adminRoutes');
 
 // Health check
 router.get('/health', (req, res) => {
@@ -39,5 +40,6 @@ router.use('/documents', documentRoutes);
 router.use('/marketplace', marketplaceRoutes);
 router.use('/ai', aiRoutes);
 router.use('/upload', uploadRoutes);
+router.use('/admin', adminRoutes);
 
 module.exports = router;

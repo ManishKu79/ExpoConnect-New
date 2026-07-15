@@ -1,7 +1,8 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiEndpoints {
-  static String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000/api';
+  static String get baseUrl =>
+      dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000/api';
 
   // Auth
   static const String register = '/auth/register';
@@ -12,7 +13,7 @@ class ApiEndpoints {
   static const String refreshToken = '/auth/refresh-token';
   static const String logout = '/auth/logout';
   static const String me = '/auth/me';
-
+  static const String admin = '/admin';
   // Users
   static const String users = '/users';
   static const String changePassword = '/users/change-password';
