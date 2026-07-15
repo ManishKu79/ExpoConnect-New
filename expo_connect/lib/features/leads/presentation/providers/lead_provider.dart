@@ -79,12 +79,25 @@ class LeadListNotifier extends StateNotifier<AsyncValue<List<Lead>>> {
   void refresh({String? eventId, String? status}) {
     loadLeads(eventId: eventId, status: status, refresh: true);
   }
+
+  void clearState() {
+    state = const AsyncValue.loading();
+    _page = 1;
+    _hasMore = true;
+    _isLoading = false;
+  }
 }
 
 // ============ LEAD STATS ============
 final leadStatsProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, eventId) async {
   final repo = ref.read(leadRepositoryProvider);
-  return repo.getLeadStats(eventId);
+  try {
+    final stats = await repo.getLeadStats(eventId);
+    return stats;
+  } catch (e) {
+    print('❌ Lead stats error: $e');
+    return {};
+  }
 });
 
 // ============ LEAD DETAIL ============

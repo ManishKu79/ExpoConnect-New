@@ -17,16 +17,34 @@ class LeadListScreen extends ConsumerStatefulWidget {
 class _LeadListScreenState extends ConsumerState<LeadListScreen> {
   String? _selectedStatus;
   final ScrollController _scrollController = ScrollController();
+  bool _isLoadingStats = false;
+  Map<String, dynamic> _stats = {};
 
   @override
   void initState() {
     super.initState();
     _loadLeads();
+    _loadStats();
     _scrollController.addListener(_onScroll);
   }
 
   void _loadLeads() {
     ref.read(leadListProvider.notifier).loadLeads(status: _selectedStatus);
+  }
+
+  void _loadStats() async {
+    setState(() => _isLoadingStats = true);
+    try {
+      final repo = ref.read(leadRepositoryProvider);
+      final stats = await repo.getLeadStats('');
+      setState(() {
+        _stats = stats;
+        _isLoadingStats = false;
+      });
+    } catch (e) {
+      print('❌ Load stats error: $e');
+      setState(() => _isLoadingStats = false);
+    }
   }
 
   void _onScroll() {
@@ -45,7 +63,6 @@ class _LeadListScreenState extends ConsumerState<LeadListScreen> {
   @override
   Widget build(BuildContext context) {
     final leadsState = ref.watch(leadListProvider);
-    final stats = ref.watch(leadStatsProvider(''));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -58,6 +75,7 @@ class _LeadListScreenState extends ConsumerState<LeadListScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: () {
               ref.read(leadListProvider.notifier).refresh(status: _selectedStatus);
+              _loadStats();
             },
           ),
         ],
@@ -147,38 +165,49 @@ class _LeadListScreenState extends ConsumerState<LeadListScreen> {
             ),
           ),
           // Stats
-          if (stats.asData?.value != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  _StatChip(
-                    label: 'Total',
-                    value: stats.asData!.value['total']?.toString() ?? '0',
-                    color: Colors.grey,
-                    isDark: isDark,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: _isLoadingStats
+                ? const SizedBox(
+                    height: 30,
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  )
+                : Row(
+                    children: [
+                      _StatChip(
+                        label: 'Total',
+                        value: _stats['total']?.toString() ?? '0',
+                        color: Colors.grey,
+                        isDark: isDark,
+                      ),
+                      _StatChip(
+                        label: 'New',
+                        value: _stats['new']?.toString() ?? '0',
+                        color: Colors.blue,
+                        isDark: isDark,
+                      ),
+                      _StatChip(
+                        label: 'Won',
+                        value: _stats['won']?.toString() ?? '0',
+                        color: Colors.green,
+                        isDark: isDark,
+                      ),
+                      _StatChip(
+                        label: 'Lost',
+                        value: _stats['lost']?.toString() ?? '0',
+                        color: Colors.red,
+                        isDark: isDark,
+                      ),
+                      if (_stats['avgScore'] != null)
+                        _StatChip(
+                          label: 'Avg Score',
+                          value: '${_stats['avgScore']}%',
+                          color: Colors.purple,
+                          isDark: isDark,
+                        ),
+                    ],
                   ),
-                  _StatChip(
-                    label: 'New',
-                    value: stats.asData!.value['new']?.toString() ?? '0',
-                    color: Colors.blue,
-                    isDark: isDark,
-                  ),
-                  _StatChip(
-                    label: 'Won',
-                    value: stats.asData!.value['won']?.toString() ?? '0',
-                    color: Colors.green,
-                    isDark: isDark,
-                  ),
-                  _StatChip(
-                    label: 'Lost',
-                    value: stats.asData!.value['lost']?.toString() ?? '0',
-                    color: Colors.red,
-                    isDark: isDark,
-                  ),
-                ],
-              ),
-            ),
+          ),
           Expanded(
             child: leadsState.when(
               loading: () => const LoadingWidget(),
@@ -196,6 +225,7 @@ class _LeadListScreenState extends ConsumerState<LeadListScreen> {
                     ElevatedButton(
                       onPressed: () {
                         ref.read(leadListProvider.notifier).refresh(status: _selectedStatus);
+                        _loadStats();
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2563EB),
@@ -231,6 +261,7 @@ class _LeadListScreenState extends ConsumerState<LeadListScreen> {
                       lead: lead,
                       isDark: isDark,
                       onTap: () {
+                        print('🔵 Lead tapped: ${lead.id}');
                         context.go('/leads/${lead.id}');
                       },
                     );
@@ -385,27 +416,26 @@ class _LeadCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.grey800 : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.grey800 : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+          border: Border.all(
+            color: getStatusColor().withOpacity(0.2),
+            width: 1,
           ),
-        ],
-        border: Border.all(
-          color: getStatusColor().withOpacity(0.2),
-          width: 1,
         ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

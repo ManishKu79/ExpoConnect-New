@@ -5,6 +5,8 @@ import '../../../../core/theme/colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../events/presentation/providers/event_provider.dart';
 import '../../../events/domain/entities/event.dart';
+import '../../../leads/presentation/providers/lead_provider.dart';
+import '../../../notifications/presentation/providers/notification_provider.dart';
 
 class ExhibitorHomeScreen extends ConsumerStatefulWidget {
   const ExhibitorHomeScreen({super.key});
@@ -14,18 +16,39 @@ class ExhibitorHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _ExhibitorHomeScreenState extends ConsumerState<ExhibitorHomeScreen> {
+  Map<String, dynamic> _leadStats = {};
+  bool _isLoadingStats = true;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(eventListProvider.notifier).refresh();
+      ref.read(unreadCountProvider.notifier).loadUnreadCount();
+      _loadLeadStats();
     });
+  }
+
+  Future<void> _loadLeadStats() async {
+    setState(() => _isLoadingStats = true);
+    try {
+      final repo = ref.read(leadRepositoryProvider);
+      final stats = await repo.getLeadStats('');
+      setState(() {
+        _leadStats = stats;
+        _isLoadingStats = false;
+      });
+    } catch (e) {
+      print('❌ Load lead stats error: $e');
+      setState(() => _isLoadingStats = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final eventsState = ref.watch(eventListProvider);
+    final unreadCount = ref.watch(unreadCountProvider);
     final user = authState.user;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -75,6 +98,46 @@ class _ExhibitorHomeScreenState extends ConsumerState<ExhibitorHomeScreen> {
                         ],
                       ),
                     ),
+                    // Notification Icon with Badge
+                    Stack(
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            Icons.notifications_outlined,
+                            color: Colors.white,
+                          ),
+                          onPressed: () {
+                            context.go('/notifications');
+                          },
+                        ),
+                        if (unreadCount > 0)
+                          Positioned(
+                            right: 8,
+                            top: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 18,
+                                minHeight: 18,
+                              ),
+                              child: Text(
+                                unreadCount > 9 ? '9+' : '$unreadCount',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    // Profile Icon
                     GestureDetector(
                       onTap: () => context.go('/profile'),
                       child: Container(
@@ -83,7 +146,7 @@ class _ExhibitorHomeScreenState extends ConsumerState<ExhibitorHomeScreen> {
                           borderRadius: BorderRadius.circular(50),
                         ),
                         child: CircleAvatar(
-                          radius: 24,
+                          radius: 20,
                           backgroundImage: user?.profilePicture != null
                               ? NetworkImage(user!.profilePicture!)
                               : null,
@@ -94,7 +157,7 @@ class _ExhibitorHomeScreenState extends ConsumerState<ExhibitorHomeScreen> {
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                    fontSize: 14,
                                   ),
                                 )
                               : null,
@@ -125,37 +188,61 @@ class _ExhibitorHomeScreenState extends ConsumerState<ExhibitorHomeScreen> {
                             Expanded(
                               child: _StatCard(
                                 icon: Icons.people,
-                                label: 'Leads',
-                                value: '24',
+                                label: 'Total Leads',
+                                value: _isLoadingStats ? '...' : (_leadStats['total']?.toString() ?? '0'),
                                 color: const Color(0xFF2563EB),
-                                onTap: () {},
+                                onTap: () => context.go('/leads'),
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: _StatCard(
-                                icon: Icons.calendar_today,
-                                label: 'Meetings',
-                                value: '8',
+                                icon: Icons.trending_up,
+                                label: 'New Leads',
+                                value: _isLoadingStats ? '...' : (_leadStats['new']?.toString() ?? '0'),
+                                color: const Color(0xFF10B981),
+                                onTap: () => context.go('/leads'),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.check_circle,
+                                label: 'Won',
+                                value: _isLoadingStats ? '...' : (_leadStats['won']?.toString() ?? '0'),
                                 color: const Color(0xFF7C3AED),
-                                onTap: () {},
+                                onTap: () => context.go('/leads'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.event,
+                                label: 'My Events',
+                                value: myEvents.length.toString(),
+                                color: const Color(0xFFF59E0B),
+                                onTap: () => context.go('/my-events'),
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: _StatCard(
-                                icon: Icons.visibility,
-                                label: 'Visitors',
-                                value: '156',
+                                icon: Icons.qr_code_scanner,
+                                label: 'Scan QR',
+                                value: 'Scan',
                                 color: const Color(0xFF06B6D4),
-                                onTap: () {},
+                                onTap: () => context.go('/qr-scanner'),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 24),
 
-                        // Quick Actions - INCLUDES QR SCANNER FOR EXHIBITOR
+                        // Quick Actions
                         Text(
                           'Quick Actions',
                           style: TextStyle(
@@ -180,7 +267,7 @@ class _ExhibitorHomeScreenState extends ConsumerState<ExhibitorHomeScreen> {
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
                               ),
-                              onTap: () {},
+                              onTap: () => context.go('/leads'),
                             ),
                             _ActionCard(
                               icon: Icons.qr_code_scanner,
@@ -189,19 +276,54 @@ class _ExhibitorHomeScreenState extends ConsumerState<ExhibitorHomeScreen> {
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF7C3AED), Color(0xFF06B6D4)],
                               ),
-                              onTap: () {
-                                // Navigate to QR Scanner - Exhibitor can scan visitor QR
-                                context.go('/qr-scanner');
-                              },
+                              onTap: () => context.go('/qr-scanner'),
                             ),
                             _ActionCard(
-                              icon: Icons.storefront,
-                              label: 'My Stall',
+                              icon: Icons.event,
+                              label: 'My Events',
                               color: const Color(0xFF06B6D4),
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF06B6D4), Color(0xFF2563EB)],
                               ),
-                              onTap: () {},
+                              onTap: () => context.go('/my-events'),
+                            ),
+                            _ActionCard(
+                              icon: Icons.analytics,
+                              label: 'Analytics',
+                              color: const Color(0xFF10B981),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
+                              ),
+                              onTap: () => context.go('/analytics'),
+                            ),
+                            _ActionCard(
+                              icon: Icons.storefront,
+                              label: 'My Stall',
+                              color: const Color(0xFFF59E0B),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFF59E0B), Color(0xFFEF4444)],
+                              ),
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Stall management coming soon!'),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                              },
+                            ),
+                            _ActionCard(
+                              icon: Icons.notifications,
+                              label: 'Alerts',
+                              color: unreadCount > 0 ? Colors.red : const Color(0xFF6366F1),
+                              gradient: unreadCount > 0 
+                                  ? const LinearGradient(
+                                      colors: [Colors.red, Colors.orange],
+                                    )
+                                  : const LinearGradient(
+                                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                                    ),
+                              onTap: () => context.go('/notifications'),
                             ),
                           ],
                         ),
@@ -220,9 +342,9 @@ class _ExhibitorHomeScreenState extends ConsumerState<ExhibitorHomeScreen> {
                               ),
                             ),
                             TextButton(
-                              onPressed: () {},
+                              onPressed: () => context.go('/leads'),
                               child: const Text(
-                                'See All',
+                                'View All',
                                 style: TextStyle(
                                   color: Color(0xFF2563EB),
                                   fontWeight: FontWeight.w600,
@@ -231,16 +353,95 @@ class _ExhibitorHomeScreenState extends ConsumerState<ExhibitorHomeScreen> {
                             ),
                           ],
                         ),
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: 3,
-                          itemBuilder: (context, index) => _LeadCard(
-                            name: 'Visitor ${index + 1}',
-                            company: 'Tech Corp',
-                            interest: index == 0 ? 'High' : 'Medium',
-                            timestamp: '2 hours ago',
+                        // Lead List - Using FutureBuilder to fetch recent leads
+                        FutureBuilder<Map<String, dynamic>>(
+                          future: ref.read(leadRepositoryProvider).getLeads(
+                            limit: 3,
                           ),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const Padding(
+                                padding: EdgeInsets.all(20),
+                                child: Center(child: CircularProgressIndicator()),
+                              );
+                            }
+
+                            if (snapshot.hasError) {
+                              return Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: isDark ? AppColors.grey800 : Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Column(
+                                  children: [
+                                    const Icon(Icons.error_outline, color: Colors.red),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Could not load leads',
+                                      style: TextStyle(
+                                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            final result = snapshot.data;
+                            final leads = result?['leads'] as List? ?? [];
+
+                            if (leads.isEmpty) {
+                              return Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: isDark ? AppColors.grey800 : Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.people_outline,
+                                      size: 48,
+                                      color: isDark ? Colors.grey[600] : Colors.grey[400],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'No leads yet',
+                                      style: TextStyle(
+                                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ElevatedButton(
+                                      onPressed: () => context.go('/qr-scanner'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF2563EB),
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      child: const Text('Scan Visitor QR'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            return ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: leads.length > 3 ? 3 : leads.length,
+                              itemBuilder: (context, index) {
+                                final lead = leads[index];
+                                return _LeadCard(
+                                  lead: lead,
+                                  isDark: isDark,
+                                  onTap: () {
+                                    context.go('/leads/${lead.id}');
+                                  },
+                                );
+                              },
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -376,123 +577,143 @@ class _ActionCard extends StatelessWidget {
 }
 
 class _LeadCard extends StatelessWidget {
-  final String name;
-  final String company;
-  final String interest;
-  final String timestamp;
+  final dynamic lead;
+  final bool isDark;
+  final VoidCallback onTap;
 
   const _LeadCard({
-    required this.name,
-    required this.company,
-    required this.interest,
-    required this.timestamp,
+    required this.lead,
+    required this.isDark,
+    required this.onTap,
   });
+
+  Color getStatusColor(String status) {
+    switch (status) {
+      case 'new':
+        return Colors.blue;
+      case 'contacted':
+        return Colors.orange;
+      case 'qualified':
+        return Colors.purple;
+      case 'won':
+        return Colors.green;
+      case 'lost':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String getVisitorName() {
+    final visitor = lead['visitor'];
+    if (visitor == null) return 'Unknown';
+    final firstName = visitor['firstName'] ?? '';
+    final lastName = visitor['lastName'] ?? '';
+    return '$firstName $lastName'.trim();
+  }
+
+  String getVisitorEmail() {
+    final visitor = lead['visitor'];
+    return visitor?['email'] ?? '';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final status = lead['status'] ?? 'new';
+    final score = lead['score'] ?? 0;
+    final event = lead['event'];
+    final eventTitle = event?['title'] ?? 'Unknown Event';
 
-    Color getInterestColor() {
-      switch (interest) {
-        case 'High':
-          return const Color(0xFF10B981);
-        case 'Medium':
-          return const Color(0xFFF59E0B);
-        case 'Low':
-          return const Color(0xFFEF4444);
-        default:
-          return const Color(0xFF64748B);
-      }
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.grey800 : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
-              ),
-              borderRadius: BorderRadius.circular(12),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.grey800 : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 5,
+              offset: const Offset(0, 1),
             ),
-            child: Center(
+          ],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: AppColors.primary.withOpacity(0.1),
               child: Text(
-                name[0],
+                getVisitorName().isNotEmpty ? getVisitorName()[0].toUpperCase() : 'U',
                 style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    getVisitorName(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                  Text(
+                    getVisitorEmail(),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.grey[400] : Colors.grey[500],
+                    ),
+                  ),
+                  Text(
+                    eventTitle,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark ? Colors.grey[500] : Colors.grey[400],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: getStatusColor(status).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    status.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: getStatusColor(status),
+                    ),
                   ),
                 ),
+                const SizedBox(height: 4),
                 Text(
-                  company,
+                  '$score%',
                   style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? Colors.grey[400] : Colors.grey[500],
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: score > 70 ? Colors.green : score > 40 ? Colors.orange : Colors.grey,
                   ),
                 ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: getInterestColor().withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  interest,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: getInterestColor(),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                timestamp,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: isDark ? Colors.grey[500] : Colors.grey[400],
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
