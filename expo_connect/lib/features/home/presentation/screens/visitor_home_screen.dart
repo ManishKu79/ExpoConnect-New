@@ -5,6 +5,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../events/presentation/providers/event_provider.dart';
 import '../../../events/domain/entities/event.dart';
+import '../../../notifications/presentation/providers/notification_provider.dart';
 
 class VisitorHomeScreen extends ConsumerStatefulWidget {
   const VisitorHomeScreen({super.key});
@@ -19,6 +20,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(eventListProvider.notifier).refresh();
+      ref.read(unreadCountProvider.notifier).loadUnreadCount();
     });
   }
 
@@ -26,6 +28,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final eventsState = ref.watch(eventListProvider);
+    final unreadCount = ref.watch(unreadCountProvider);
     final user = authState.user;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -74,6 +77,46 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                         ],
                       ),
                     ),
+                    // Notification Icon with Badge
+                    Stack(
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            Icons.notifications_outlined,
+                            color: Colors.white,
+                          ),
+                          onPressed: () {
+                            context.go('/notifications');
+                          },
+                        ),
+                        if (unreadCount > 0)
+                          Positioned(
+                            right: 8,
+                            top: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 18,
+                                minHeight: 18,
+                              ),
+                              child: Text(
+                                unreadCount > 9 ? '9+' : '$unreadCount',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    // Profile Icon
                     GestureDetector(
                       onTap: () => context.go('/profile'),
                       child: Container(
@@ -82,7 +125,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                           borderRadius: BorderRadius.circular(50),
                         ),
                         child: CircleAvatar(
-                          radius: 24,
+                          radius: 20,
                           backgroundImage: user?.profilePicture != null
                               ? NetworkImage(user!.profilePicture!)
                               : null,
@@ -93,7 +136,7 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                    fontSize: 14,
                                   ),
                                 )
                               : null,
@@ -179,18 +222,18 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: _StatCard(
-                                icon: Icons.connect_without_contact,
-                                label: 'Network',
-                                value: '0',
-                                color: const Color(0xFF06B6D4),
-                                onTap: () {},
+                                icon: Icons.notifications,
+                                label: 'Alerts',
+                                value: unreadCount.toString(),
+                                color: unreadCount > 0 ? Colors.red : const Color(0xFF06B6D4),
+                                onTap: () => context.go('/notifications'),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 24),
 
-                        // Quick Actions - REMOVED QR SCANNER FOR VISITOR
+                        // Quick Actions
                         Text(
                           'Quick Actions',
                           style: TextStyle(
@@ -231,13 +274,19 @@ class _VisitorHomeScreenState extends ConsumerState<VisitorHomeScreen> {
                               },
                             ),
                             _ActionCard(
-                              icon: Icons.business_center,
-                              label: 'Exhibitors',
-                              color: const Color(0xFF06B6D4),
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF06B6D4), Color(0xFF2563EB)],
-                              ),
-                              onTap: () {},
+                              icon: Icons.notifications,
+                              label: 'Notifications',
+                              color: unreadCount > 0 ? Colors.red : const Color(0xFF06B6D4),
+                              gradient: unreadCount > 0 
+                                  ? const LinearGradient(
+                                      colors: [Colors.red, Colors.orange],
+                                    )
+                                  : const LinearGradient(
+                                      colors: [Color(0xFF06B6D4), Color(0xFF2563EB)],
+                                    ),
+                              onTap: () {
+                                context.go('/notifications');
+                              },
                             ),
                           ],
                         ),

@@ -16,7 +16,9 @@ const initSocket = (server) => {
 
     socket.on('authenticate', (userId) => {
       socket.userId = userId;
-      logger.info(`User ${userId} authenticated`);
+      // Join user's private room
+      socket.join(`user_${userId}`);
+      logger.info(`User ${userId} authenticated and joined room`);
     });
 
     socket.on('disconnect', () => {

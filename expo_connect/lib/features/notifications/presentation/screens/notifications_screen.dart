@@ -1,25 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
-
-class NotificationItem {
-  final String id;
-  final String title;
-  final String message;
-  final String type;
-  final DateTime createdAt;
-  final bool isRead;
-
-  NotificationItem({
-    required this.id,
-    required this.title,
-    required this.message,
-    required this.type,
-    required this.createdAt,
-    this.isRead = false,
-  });
-}
+import '../../../../shared/widgets/loading_widget.dart';
+import '../providers/notification_provider.dart';
+import '../../domain/entities/notification.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -29,54 +15,37 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
-  // Sample notifications - Replace with actual API data
-  List<NotificationItem> _notifications = [];
-  bool _isLoading = true;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadNotifications();
+    _scrollController.addListener(_onScroll);
   }
 
-  Future<void> _loadNotifications() async {
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() {
-      _notifications = [
-        NotificationItem(
-          id: '1',
-          title: 'New Event: Tech Expo 2024',
-          message: 'A new technology expo has been announced. Register now!',
-          type: 'event',
-          createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-          isRead: false,
-        ),
-        NotificationItem(
-          id: '2',
-          title: 'Meeting Reminder',
-          message: 'You have a meeting with John Doe at 3:00 PM',
-          type: 'meeting',
-          createdAt: DateTime.now().subtract(const Duration(days: 1)),
-          isRead: true,
-        ),
-        NotificationItem(
-          id: '3',
-          title: 'New Lead',
-          message: 'A new lead has been added to your company profile',
-          type: 'lead',
-          createdAt: DateTime.now().subtract(const Duration(days: 2)),
-          isRead: true,
-        ),
-      ];
-      _isLoading = false;
-    });
+  void _loadNotifications() {
+    ref.read(notificationListProvider.notifier).loadNotifications();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref.read(notificationListProvider.notifier).loadNotifications();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final notificationsState = ref.watch(notificationListProvider);
+    final unreadCount = ref.watch(unreadCountProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final unreadCount = _notifications.where((n) => !n.isRead).length;
 
     return Scaffold(
       appBar: AppBar(
@@ -86,79 +55,107 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         actions: [
           if (unreadCount > 0)
             TextButton(
-              onPressed: () {
-                setState(() {
-                  _notifications = _notifications.map((n) {
-                    return NotificationItem(
-                      id: n.id,
-                      title: n.title,
-                      message: n.message,
-                      type: n.type,
-                      createdAt: n.createdAt,
-                      isRead: true,
-                    );
-                  }).toList();
-                });
+              onPressed: () async {
+                await ref.read(unreadCountProvider.notifier).markAllAsRead();
+                ref.read(notificationListProvider.notifier).refresh();
               },
-              child: const Text('Mark all read'),
+              child: const Text(
+                'Mark all read',
+                style: TextStyle(
+                  color: Color(0xFF2563EB),
+                ),
+              ),
             ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _notifications.isEmpty
-              ? const EmptyStateWidget(
-                  title: 'No Notifications',
-                  message: 'You have no notifications at the moment.',
-                  icon: Icons.notifications_off,
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _notifications.length,
-                  itemBuilder: (context, index) {
-                    final notification = _notifications[index];
-                    return _NotificationCard(
-                      notification: notification,
-                      onTap: () {
-                        setState(() {
-                          _notifications[index] = NotificationItem(
-                            id: notification.id,
-                            title: notification.title,
-                            message: notification.message,
-                            type: notification.type,
-                            createdAt: notification.createdAt,
-                            isRead: true,
-                          );
-                        });
-                      },
-                    );
-                  },
+      body: notificationsState.when(
+        loading: () => const LoadingWidget(),
+        error: (err, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 60, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                'Error: $err',
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  ref.read(notificationListProvider.notifier).refresh();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
                 ),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+        data: (notifications) {
+          if (notifications.isEmpty) {
+            return const EmptyStateWidget(
+              title: 'No Notifications',
+              message: 'You have no notifications at the moment.',
+              icon: Icons.notifications_off,
+            );
+          }
+
+          return ListView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.all(16),
+            itemCount: notifications.length + 1,
+            itemBuilder: (context, index) {
+              if (index == notifications.length) {
+                return const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              final notification = notifications[index];
+              return _NotificationCard(
+                notification: notification,
+                onTap: () async {
+                  if (!notification.isRead) {
+                    await ref.read(unreadCountProvider.notifier).markAsRead(notification.id);
+                    ref.read(notificationListProvider.notifier).refresh();
+                  }
+                },
+                isDark: isDark,
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
 
 class _NotificationCard extends StatelessWidget {
-  final NotificationItem notification;
+  final NotificationEntity notification;
   final VoidCallback onTap;
+  final bool isDark;
 
   const _NotificationCard({
     required this.notification,
     required this.onTap,
+    required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     Color getTypeColor() {
       switch (notification.type) {
         case 'event':
           return const Color(0xFF2563EB);
-        case 'meeting':
-          return const Color(0xFF7C3AED);
-        case 'lead':
+        case 'registration':
           return const Color(0xFF10B981);
+        case 'qr_scan':
+          return const Color(0xFF7C3AED);
+        case 'reminder':
+          return const Color(0xFFF59E0B);
         default:
           return Colors.grey;
       }
@@ -168,10 +165,12 @@ class _NotificationCard extends StatelessWidget {
       switch (notification.type) {
         case 'event':
           return Icons.event;
-        case 'meeting':
-          return Icons.meeting_room;
-        case 'lead':
-          return Icons.people;
+        case 'registration':
+          return Icons.app_registration;
+        case 'qr_scan':
+          return Icons.qr_code_scanner;
+        case 'reminder':
+          return Icons.alarm;
         default:
           return Icons.notifications;
       }
@@ -185,6 +184,11 @@ class _NotificationCard extends StatelessWidget {
             ? (isDark ? AppColors.grey800 : Colors.white)
             : (isDark ? AppColors.grey800.withOpacity(0.8) : const Color(0xFFF0F7FF)),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: notification.isRead
+              ? Colors.transparent
+              : getTypeColor().withOpacity(0.3),
+        ),
         boxShadow: [
           if (!notification.isRead)
             BoxShadow(
@@ -201,14 +205,14 @@ class _NotificationCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: getTypeColor().withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 getTypeIcon(),
-                size: 24,
+                size: 22,
                 color: getTypeColor(),
               ),
             ),

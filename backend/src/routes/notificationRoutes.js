@@ -6,11 +6,18 @@ const notificationController = require('../controllers/notificationController');
 // All routes require authentication
 router.use(auth);
 
-// Notification routes
+// Get notifications
 router.get('/', notificationController.getNotifications);
+router.get('/unread-count', notificationController.getUnreadCount);
+
+// Mark as read
 router.put('/:id/read', notificationController.markAsRead);
 router.put('/read-all', notificationController.markAllAsRead);
-router.post('/send', authorize('admin'), notificationController.sendNotification);
+
+// Delete
 router.delete('/:id', notificationController.deleteNotification);
+
+// Send notification (organizer only)
+router.post('/send-event', authorize('organizer', 'admin'), notificationController.sendEventNotification);
 
 module.exports = router;

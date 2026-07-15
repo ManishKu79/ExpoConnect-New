@@ -8,8 +8,8 @@ const NotificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['info', 'alert', 'reminder', 'promotion', 'update'],
-    default: 'info',
+    enum: ['event', 'registration', 'qr_scan', 'reminder', 'update', 'system'],
+    required: true,
   },
   title: {
     type: String,
@@ -19,11 +19,14 @@ const NotificationSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  read: {
+  data: {
+    type: Map,
+    of: String,
+  },
+  isRead: {
     type: Boolean,
     default: false,
   },
-  link: String,
   createdAt: {
     type: Date,
     default: Date.now,
@@ -32,7 +35,7 @@ const NotificationSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-NotificationSchema.index({ user: 1, read: 1 });
-NotificationSchema.index({ createdAt: -1 });
+NotificationSchema.index({ user: 1, createdAt: -1 });
+NotificationSchema.index({ user: 1, isRead: 1 });
 
 module.exports = mongoose.model('Notification', NotificationSchema);
