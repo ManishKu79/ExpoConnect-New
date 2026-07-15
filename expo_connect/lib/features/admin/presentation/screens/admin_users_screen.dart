@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
@@ -16,52 +16,38 @@ class AdminUsersScreen extends ConsumerStatefulWidget {
 class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
   String? _selectedRole;
   String _searchQuery = '';
-  int _page = 1;
-  bool _isLoading = false;
+  bool _isLoading = true;
   List<dynamic> _users = [];
-  bool _hasMore = true;
-  final ScrollController _scrollController = ScrollController();
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     _loadUsers();
-    _scrollController.addListener(_onScroll);
   }
 
-  Future<void> _loadUsers({bool refresh = false}) async {
-    if (_isLoading || (!_hasMore && !refresh)) return;
-    setState(() => _isLoading = true);
-    if (refresh) {
-      _page = 1;
-      _hasMore = true;
-      _users = [];
-    }
+  Future<void> _loadUsers() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final repo = ref.read(adminRepositoryProvider);
-      final result = await repo.getUsers(
-        page: _page,
-        limit: 20,
+      final users = await repo.getUsers(
         role: _selectedRole,
         search: _searchQuery.isNotEmpty ? _searchQuery : null,
       );
-      final users = result['data'] ?? [];
-      if (users.length < 20) _hasMore = false;
+      print('📝 Users loaded: ${users.length}');
       setState(() {
-        _users = refresh ? users : [..._users, ...users];
-        _page++;
+        _users = users;
         _isLoading = false;
       });
     } catch (e) {
       print('❌ Load users error: $e');
-      setState(() => _isLoading = false);
-    }
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      _loadUsers();
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
@@ -70,101 +56,116 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Manage Users'),
-        backgroundColor: isDark ? AppColors.grey900 : Colors.white,
+        title: const Text('Users'),
+        backgroundColor: isDark ? Colors.grey[900] : Colors.white,
         elevation: 0,
+        centerTitle: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => _loadUsers(refresh: true),
+            onPressed: _loadUsers,
           ),
         ],
       ),
       body: Column(
         children: [
-          // Search and Filter
-          Padding(
+          // Search & Filter
+          Container(
             padding: const EdgeInsets.all(16),
+            color: isDark ? Colors.grey[900] : Colors.white,
             child: Column(
               children: [
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search users...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: isDark ? AppColors.grey800 : AppColors.grey50,
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              setState(() => _searchQuery = '');
-                              _loadUsers(refresh: true);
-                            },
-                          )
-                        : null,
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.grey[800] : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  onChanged: (value) {
-                    setState(() => _searchQuery = value);
-                    _loadUsers(refresh: true);
-                  },
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search users...',
+                      hintStyle: TextStyle(
+                        color: isDark ? Colors.grey[400] : Colors.grey[500],
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: isDark ? Colors.grey[400] : Colors.grey[500],
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(
+                                Icons.close,
+                                color: isDark ? Colors.grey[400] : Colors.grey[500],
+                              ),
+                              onPressed: () {
+                                setState(() => _searchQuery = '');
+                                _loadUsers();
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (value) {
+                      setState(() => _searchQuery = value);
+                      _loadUsers();
+                    },
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _FilterChip(
+                      _RoleChip(
                         label: 'All',
                         selected: _selectedRole == null,
                         onTap: () {
                           setState(() => _selectedRole = null);
-                          _loadUsers(refresh: true);
+                          _loadUsers();
                         },
                         isDark: isDark,
                       ),
-                      _FilterChip(
-                        label: 'Visitor',
-                        selected: _selectedRole == 'visitor',
-                        onTap: () {
-                          setState(() => _selectedRole = 'visitor');
-                          _loadUsers(refresh: true);
-                        },
-                        isDark: isDark,
-                        color: Colors.blue,
-                      ),
-                      _FilterChip(
-                        label: 'Exhibitor',
-                        selected: _selectedRole == 'exhibitor',
-                        onTap: () {
-                          setState(() => _selectedRole = 'exhibitor');
-                          _loadUsers(refresh: true);
-                        },
-                        isDark: isDark,
-                        color: Colors.purple,
-                      ),
-                      _FilterChip(
-                        label: 'Organizer',
-                        selected: _selectedRole == 'organizer',
-                        onTap: () {
-                          setState(() => _selectedRole = 'organizer');
-                          _loadUsers(refresh: true);
-                        },
-                        isDark: isDark,
-                        color: Colors.orange,
-                      ),
-                      _FilterChip(
+                      _RoleChip(
                         label: 'Admin',
                         selected: _selectedRole == 'admin',
                         onTap: () {
                           setState(() => _selectedRole = 'admin');
-                          _loadUsers(refresh: true);
+                          _loadUsers();
                         },
                         isDark: isDark,
                         color: Colors.red,
+                      ),
+                      _RoleChip(
+                        label: 'Organizer',
+                        selected: _selectedRole == 'organizer',
+                        onTap: () {
+                          setState(() => _selectedRole = 'organizer');
+                          _loadUsers();
+                        },
+                        isDark: isDark,
+                        color: Colors.orange,
+                      ),
+                      _RoleChip(
+                        label: 'Exhibitor',
+                        selected: _selectedRole == 'exhibitor',
+                        onTap: () {
+                          setState(() => _selectedRole = 'exhibitor');
+                          _loadUsers();
+                        },
+                        isDark: isDark,
+                        color: Colors.purple,
+                      ),
+                      _RoleChip(
+                        label: 'Visitor',
+                        selected: _selectedRole == 'visitor',
+                        onTap: () {
+                          setState(() => _selectedRole = 'visitor');
+                          _loadUsers();
+                        },
+                        isDark: isDark,
+                        color: Colors.blue,
                       ),
                     ],
                   ),
@@ -172,30 +173,48 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
               ],
             ),
           ),
+          // User List
           Expanded(
-            child: _users.isEmpty && !_isLoading
-                ? const EmptyStateWidget(
-                    title: 'No Users Found',
-                    message: 'No users match your search criteria',
-                    icon: Icons.people_outline,
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _users.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == _users.length) {
-                        return _isLoading
-                            ? const Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Center(child: CircularProgressIndicator()),
-                              )
-                            : const SizedBox.shrink();
-                      }
-                      final user = _users[index];
-                      return _UserCard(user: user, isDark: isDark);
-                    },
-                  ),
+            child: _isLoading
+                ? const LoadingWidget()
+                : _error != null
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error_outline, size: 60, color: Colors.red),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Error: $_error',
+                              style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _loadUsers,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _users.isEmpty
+                        ? const EmptyStateWidget(
+                            title: 'No Users Found',
+                            message: 'No users match your search criteria',
+                            icon: Icons.people_outline,
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _users.length,
+                            itemBuilder: (context, index) {
+                              final user = _users[index];
+                              return _UserCard(user: user, isDark: isDark);
+                            },
+                          ),
           ),
         ],
       ),
@@ -203,14 +222,14 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
   }
 }
 
-class _FilterChip extends StatelessWidget {
+class _RoleChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
   final bool isDark;
   final Color? color;
 
-  const _FilterChip({
+  const _RoleChip({
     required this.label,
     required this.selected,
     required this.onTap,
@@ -222,25 +241,23 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-        backgroundColor: isDark ? AppColors.grey800 : Colors.white,
-        selectedColor: (color ?? AppColors.primary).withOpacity(0.2),
-        labelStyle: TextStyle(
-          color: selected
-              ? (color ?? AppColors.primary)
-              : (isDark ? Colors.white : Colors.black),
-          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-        ),
-        checkmarkColor: color ?? AppColors.primary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
             color: selected
                 ? (color ?? AppColors.primary)
-                : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                : (isDark ? Colors.grey[800] : Colors.grey[200]),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: selected ? Colors.white : (isDark ? Colors.grey[300] : Colors.grey[700]),
+            ),
           ),
         ),
       ),
@@ -285,12 +302,12 @@ class _UserCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.grey800 : Colors.white,
+        color: isDark ? Colors.grey[800] : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -303,22 +320,23 @@ class _UserCard extends StatelessWidget {
             child: Text(
               name.isNotEmpty ? name[0].toUpperCase() : 'U',
               style: TextStyle(
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: getRoleColor(),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  name.isNotEmpty ? name : 'Unknown User',
+                  name,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    color: isDark ? Colors.white : Colors.black,
                   ),
                 ),
                 Text(
@@ -328,10 +346,11 @@ class _UserCard extends StatelessWidget {
                     color: isDark ? Colors.grey[400] : Colors.grey[600],
                   ),
                 ),
+                const SizedBox(height: 4),
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                       decoration: BoxDecoration(
                         color: getRoleColor().withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -347,7 +366,7 @@ class _UserCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                       decoration: BoxDecoration(
                         color: isActive
                             ? Colors.green.withOpacity(0.1)
@@ -369,11 +388,9 @@ class _UserCard extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.edit_outlined, size: 20),
-            color: AppColors.primary,
-            onPressed: () {
-              // Show edit dialog
-            },
+            icon: const Icon(Icons.more_vert, size: 20),
+            color: isDark ? Colors.grey[400] : Colors.grey[600],
+            onPressed: () {},
           ),
         ],
       ),

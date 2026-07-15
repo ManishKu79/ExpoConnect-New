@@ -111,12 +111,14 @@ class _EventListScreenState extends ConsumerState<EventListScreen> {
                     itemCount: events.length + 1,
                     itemBuilder: (context, index) {
                       if (index == events.length) {
-                        return const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(16),
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
+                        return _isLoading
+                            ? const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: CircularProgressIndicator(),
+                                ),
+                              )
+                            : const SizedBox.shrink();
                       }
                       final event = events[index];
                       return _EventCard(event: event);
@@ -137,6 +139,15 @@ class _EventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Helper function to format date safely
+    String formatDate(DateTime date) {
+      try {
+        return '${date.day}/${date.month}/${date.year}';
+      } catch (e) {
+        return 'Date TBD';
+      }
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -210,7 +221,7 @@ class _EventCard extends StatelessWidget {
                       Icon(Icons.calendar_today, size: 16, color: isDark ? Colors.grey[400] : Colors.grey[600]),
                       const SizedBox(width: 4),
                       Text(
-                        '${event.startDate.day}/${event.startDate.month}/${event.startDate.year}',
+                        formatDate(event.startDate),
                         style: TextStyle(
                           fontSize: 12,
                           color: isDark ? Colors.grey[400] : Colors.grey[600],

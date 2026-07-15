@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
@@ -15,51 +15,37 @@ class AdminLeadsScreen extends ConsumerStatefulWidget {
 
 class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
   String? _selectedStatus;
-  int _page = 1;
-  bool _isLoading = false;
+  bool _isLoading = true;
   List<dynamic> _leads = [];
-  bool _hasMore = true;
-  final ScrollController _scrollController = ScrollController();
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     _loadLeads();
-    _scrollController.addListener(_onScroll);
   }
 
-  Future<void> _loadLeads({bool refresh = false}) async {
-    if (_isLoading || (!_hasMore && !refresh)) return;
-    setState(() => _isLoading = true);
-    if (refresh) {
-      _page = 1;
-      _hasMore = true;
-      _leads = [];
-    }
+  Future<void> _loadLeads() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final repo = ref.read(adminRepositoryProvider);
-      final result = await repo.getLeads(
-        page: _page,
-        limit: 20,
+      final leads = await repo.getLeads(
         status: _selectedStatus,
       );
-      final leads = result['data'] ?? [];
-      if (leads.length < 20) _hasMore = false;
+      print('📝 Leads loaded: ${leads.length}');
       setState(() {
-        _leads = refresh ? leads : [..._leads, ...leads];
-        _page++;
+        _leads = leads;
         _isLoading = false;
       });
     } catch (e) {
       print('❌ Load leads error: $e');
-      setState(() => _isLoading = false);
-    }
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      _loadLeads();
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
@@ -68,81 +54,84 @@ class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Manage Leads'),
-        backgroundColor: isDark ? AppColors.grey900 : Colors.white,
+        title: const Text('Leads'),
+        backgroundColor: isDark ? Colors.grey[900] : Colors.white,
         elevation: 0,
+        centerTitle: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => _loadLeads(refresh: true),
+            onPressed: _loadLeads,
           ),
         ],
       ),
       body: Column(
         children: [
-          // Status Filter
-          Padding(
+          // Filter
+          Container(
             padding: const EdgeInsets.all(16),
+            color: isDark ? Colors.grey[900] : Colors.white,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _FilterChip(
+                  _StatusChip(
                     label: 'All',
                     selected: _selectedStatus == null,
                     onTap: () {
                       setState(() => _selectedStatus = null);
-                      _loadLeads(refresh: true);
+                      _loadLeads();
                     },
                     isDark: isDark,
                   ),
-                  _FilterChip(
+                  _StatusChip(
                     label: 'New',
                     selected: _selectedStatus == 'new',
                     onTap: () {
                       setState(() => _selectedStatus = 'new');
-                      _loadLeads(refresh: true);
+                      _loadLeads();
                     },
                     isDark: isDark,
                     color: Colors.blue,
                   ),
-                  _FilterChip(
+                  _StatusChip(
                     label: 'Contacted',
                     selected: _selectedStatus == 'contacted',
                     onTap: () {
                       setState(() => _selectedStatus = 'contacted');
-                      _loadLeads(refresh: true);
+                      _loadLeads();
                     },
                     isDark: isDark,
                     color: Colors.orange,
                   ),
-                  _FilterChip(
+                  _StatusChip(
                     label: 'Qualified',
                     selected: _selectedStatus == 'qualified',
                     onTap: () {
                       setState(() => _selectedStatus = 'qualified');
-                      _loadLeads(refresh: true);
+                      _loadLeads();
                     },
                     isDark: isDark,
                     color: Colors.purple,
                   ),
-                  _FilterChip(
+                  _StatusChip(
                     label: 'Won',
                     selected: _selectedStatus == 'won',
                     onTap: () {
                       setState(() => _selectedStatus = 'won');
-                      _loadLeads(refresh: true);
+                      _loadLeads();
                     },
                     isDark: isDark,
                     color: Colors.green,
                   ),
-                  _FilterChip(
+                  _StatusChip(
                     label: 'Lost',
                     selected: _selectedStatus == 'lost',
                     onTap: () {
                       setState(() => _selectedStatus = 'lost');
-                      _loadLeads(refresh: true);
+                      _loadLeads();
                     },
                     isDark: isDark,
                     color: Colors.red,
@@ -151,30 +140,48 @@ class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
               ),
             ),
           ),
+          // Lead List
           Expanded(
-            child: _leads.isEmpty && !_isLoading
-                ? const EmptyStateWidget(
-                    title: 'No Leads Found',
-                    message: 'No leads match your filter criteria',
-                    icon: Icons.people_outline,
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _leads.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == _leads.length) {
-                        return _isLoading
-                            ? const Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Center(child: CircularProgressIndicator()),
-                              )
-                            : const SizedBox.shrink();
-                      }
-                      final lead = _leads[index];
-                      return _LeadCard(lead: lead, isDark: isDark);
-                    },
-                  ),
+            child: _isLoading
+                ? const LoadingWidget()
+                : _error != null
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error_outline, size: 60, color: Colors.red),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Error: $_error',
+                              style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _loadLeads,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _leads.isEmpty
+                        ? const EmptyStateWidget(
+                            title: 'No Leads Found',
+                            message: 'No leads match your filter criteria',
+                            icon: Icons.people_outline,
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _leads.length,
+                            itemBuilder: (context, index) {
+                              final lead = _leads[index];
+                              return _LeadCard(lead: lead, isDark: isDark);
+                            },
+                          ),
           ),
         ],
       ),
@@ -182,14 +189,14 @@ class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
   }
 }
 
-class _FilterChip extends StatelessWidget {
+class _StatusChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
   final bool isDark;
   final Color? color;
 
-  const _FilterChip({
+  const _StatusChip({
     required this.label,
     required this.selected,
     required this.onTap,
@@ -201,25 +208,23 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-        backgroundColor: isDark ? AppColors.grey800 : Colors.white,
-        selectedColor: (color ?? AppColors.primary).withOpacity(0.2),
-        labelStyle: TextStyle(
-          color: selected
-              ? (color ?? AppColors.primary)
-              : (isDark ? Colors.white : Colors.black),
-          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-        ),
-        checkmarkColor: color ?? AppColors.primary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
             color: selected
                 ? (color ?? AppColors.primary)
-                : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                : (isDark ? Colors.grey[800] : Colors.grey[200]),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: selected ? Colors.white : (isDark ? Colors.grey[300] : Colors.grey[700]),
+            ),
           ),
         ),
       ),
@@ -265,12 +270,12 @@ class _LeadCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.grey800 : Colors.white,
+        color: isDark ? Colors.grey[800] : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -278,17 +283,18 @@ class _LeadCard extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
-            radius: 20,
+            radius: 24,
             backgroundColor: getStatusColor().withOpacity(0.1),
             child: Text(
               visitorName.isNotEmpty ? visitorName[0].toUpperCase() : 'U',
               style: TextStyle(
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: getStatusColor(),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,22 +302,23 @@ class _LeadCard extends StatelessWidget {
                 Text(
                   visitorName.isNotEmpty ? visitorName : 'Unknown Visitor',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    color: isDark ? Colors.white : Colors.black,
                   ),
                 ),
                 Text(
                   visitor['email'] ?? '',
                   style: TextStyle(
-                    fontSize: 12,
-                    color: isDark ? Colors.grey[400] : Colors.grey[500],
+                    fontSize: 13,
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
                   ),
                 ),
+                const SizedBox(height: 4),
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                       decoration: BoxDecoration(
                         color: getStatusColor().withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -329,23 +336,43 @@ class _LeadCard extends StatelessWidget {
                     Text(
                       event['title'] ?? 'Unknown Event',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         color: isDark ? Colors.grey[400] : Colors.grey[500],
                       ),
                     ),
                     const Spacer(),
-                    Text(
-                      '$score%',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: score > 70 ? Colors.green : score > 40 ? Colors.orange : Colors.grey,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: score > 70
+                            ? Colors.green.withOpacity(0.1)
+                            : score > 40
+                                ? Colors.orange.withOpacity(0.1)
+                                : Colors.grey.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$score%',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: score > 70
+                              ? Colors.green
+                              : score > 40
+                                  ? Colors.orange
+                                  : Colors.grey,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ],
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.more_vert, size: 20),
+            color: isDark ? Colors.grey[400] : Colors.grey[600],
+            onPressed: () {},
           ),
         ],
       ),

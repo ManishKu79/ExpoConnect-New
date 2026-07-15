@@ -3,8 +3,8 @@ abstract class AdminRepository {
   Future<Map<String, dynamic>> getSystemStats();
   Future<List<dynamic>> getRecentActivity();
   
-  // User Management
-  Future<Map<String, dynamic>> getUsers({
+  // User Management - Returns List directly
+  Future<List<dynamic>> getUsers({
     int page = 1,
     int limit = 20,
     String? role,
@@ -14,8 +14,8 @@ abstract class AdminRepository {
   Future<Map<String, dynamic>> updateUser(String id, Map<String, dynamic> data);
   Future<void> deleteUser(String id);
   
-  // Event Management
-  Future<Map<String, dynamic>> getEvents({
+  // Event Management - Returns List directly
+  Future<List<dynamic>> getEvents({
     int page = 1,
     int limit = 20,
     String? status,
@@ -24,8 +24,8 @@ abstract class AdminRepository {
   Future<Map<String, dynamic>> updateEvent(String id, Map<String, dynamic> data);
   Future<void> deleteEvent(String id);
   
-  // Lead Management
-  Future<Map<String, dynamic>> getLeads({
+  // Lead Management - Returns List directly
+  Future<List<dynamic>> getLeads({
     int page = 1,
     int limit = 20,
     String? status,

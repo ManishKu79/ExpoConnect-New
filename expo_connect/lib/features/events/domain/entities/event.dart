@@ -34,6 +34,24 @@
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
+    print('🔍 ===== Event.fromJson =====');
+    print('📝 Raw JSON: $json');
+    
+    // Helper function to parse DateTime safely
+    DateTime parseDate(dynamic dateValue) {
+      if (dateValue == null) return DateTime.now();
+      if (dateValue is DateTime) return dateValue;
+      if (dateValue is String) {
+        try {
+          return DateTime.parse(dateValue);
+        } catch (e) {
+          print('❌ Failed to parse date: $dateValue');
+          return DateTime.now();
+        }
+      }
+      return DateTime.now();
+    }
+
     // Get ID from multiple possible sources
     String getId() {
       if (json['id'] != null && json['id'].toString().isNotEmpty) {
@@ -57,12 +75,8 @@
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
       banner: json['banner']?.toString(),
-      startDate: json['startDate'] != null 
-          ? DateTime.parse(json['startDate'].toString()) 
-          : DateTime.now(),
-      endDate: json['endDate'] != null 
-          ? DateTime.parse(json['endDate'].toString()) 
-          : DateTime.now().add(const Duration(hours: 1)),
+      startDate: parseDate(json['startDate']),
+      endDate: parseDate(json['endDate']),
       status: json['status']?.toString() ?? 'draft',
       organizerId: json['organizer']?['_id']?.toString() ?? json['organizerId']?.toString(),
       organizerName: json['organizer']?['firstName']?.toString() ?? json['organizerName']?.toString(),

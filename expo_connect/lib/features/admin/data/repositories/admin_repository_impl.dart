@@ -6,15 +6,15 @@ class AdminRepositoryImpl implements AdminRepository {
 
   AdminRepositoryImpl(this.remoteDataSource);
 
-  // ============ SYSTEM STATS ============
   @override
   Future<Map<String, dynamic>> getSystemStats() async {
     try {
       final response = await remoteDataSource.getSystemStats();
-      return response['data'];
+      print('📊 System stats response: $response');
+      return response['data'] ?? {};
     } catch (e) {
       print('❌ Get system stats error: $e');
-      rethrow;
+      return {};
     }
   }
 
@@ -22,6 +22,7 @@ class AdminRepositoryImpl implements AdminRepository {
   Future<List<dynamic>> getRecentActivity() async {
     try {
       final response = await remoteDataSource.getRecentActivity();
+      print('📊 Recent activity response: $response');
       return response['data'] ?? [];
     } catch (e) {
       print('❌ Get recent activity error: $e');
@@ -29,9 +30,8 @@ class AdminRepositoryImpl implements AdminRepository {
     }
   }
 
-  // ============ USER MANAGEMENT ============
   @override
-  Future<Map<String, dynamic>> getUsers({
+  Future<List<dynamic>> getUsers({
     int page = 1,
     int limit = 20,
     String? role,
@@ -46,10 +46,29 @@ class AdminRepositoryImpl implements AdminRepository {
         search: search,
         status: status,
       );
-      return response['data'];
+      
+      print('📝 Users API response: $response');
+      
+      // Extract the data list from the response
+      if (response is Map<String, dynamic>) {
+        final data = response['data'];
+        if (data is Map<String, dynamic>) {
+          final innerData = data['data'];
+          if (innerData is List) {
+            print('📝 Extracted ${innerData.length} users');
+            return innerData;
+          }
+        } else if (data is List) {
+          print('📝 Extracted ${data.length} users');
+          return data;
+        }
+      }
+      
+      print('⚠️ No users found');
+      return [];
     } catch (e) {
       print('❌ Get users error: $e');
-      rethrow;
+      return [];
     }
   }
 
@@ -57,10 +76,10 @@ class AdminRepositoryImpl implements AdminRepository {
   Future<Map<String, dynamic>> updateUser(String id, Map<String, dynamic> data) async {
     try {
       final response = await remoteDataSource.updateUser(id, data);
-      return response['data'];
+      return response['data'] ?? {};
     } catch (e) {
       print('❌ Update user error: $e');
-      rethrow;
+      return {};
     }
   }
 
@@ -74,9 +93,8 @@ class AdminRepositoryImpl implements AdminRepository {
     }
   }
 
-  // ============ EVENT MANAGEMENT ============
   @override
-  Future<Map<String, dynamic>> getEvents({
+  Future<List<dynamic>> getEvents({
     int page = 1,
     int limit = 20,
     String? status,
@@ -89,10 +107,28 @@ class AdminRepositoryImpl implements AdminRepository {
         status: status,
         search: search,
       );
-      return response['data'];
+      
+      print('📝 Events API response: $response');
+      
+      if (response is Map<String, dynamic>) {
+        final data = response['data'];
+        if (data is Map<String, dynamic>) {
+          final innerData = data['data'];
+          if (innerData is List) {
+            print('📝 Extracted ${innerData.length} events');
+            return innerData;
+          }
+        } else if (data is List) {
+          print('📝 Extracted ${data.length} events');
+          return data;
+        }
+      }
+      
+      print('⚠️ No events found');
+      return [];
     } catch (e) {
       print('❌ Get events error: $e');
-      rethrow;
+      return [];
     }
   }
 
@@ -100,10 +136,10 @@ class AdminRepositoryImpl implements AdminRepository {
   Future<Map<String, dynamic>> updateEvent(String id, Map<String, dynamic> data) async {
     try {
       final response = await remoteDataSource.updateEvent(id, data);
-      return response['data'];
+      return response['data'] ?? {};
     } catch (e) {
       print('❌ Update event error: $e');
-      rethrow;
+      return {};
     }
   }
 
@@ -117,9 +153,8 @@ class AdminRepositoryImpl implements AdminRepository {
     }
   }
 
-  // ============ LEAD MANAGEMENT ============
   @override
-  Future<Map<String, dynamic>> getLeads({
+  Future<List<dynamic>> getLeads({
     int page = 1,
     int limit = 20,
     String? status,
@@ -132,10 +167,28 @@ class AdminRepositoryImpl implements AdminRepository {
         status: status,
         eventId: eventId,
       );
-      return response['data'];
+      
+      print('📝 Leads API response: $response');
+      
+      if (response is Map<String, dynamic>) {
+        final data = response['data'];
+        if (data is Map<String, dynamic>) {
+          final innerData = data['data'];
+          if (innerData is List) {
+            print('📝 Extracted ${innerData.length} leads');
+            return innerData;
+          }
+        } else if (data is List) {
+          print('📝 Extracted ${data.length} leads');
+          return data;
+        }
+      }
+      
+      print('⚠️ No leads found');
+      return [];
     } catch (e) {
       print('❌ Get leads error: $e');
-      rethrow;
+      return [];
     }
   }
 }

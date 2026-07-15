@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/empty_state_widget.dart';
@@ -15,52 +16,38 @@ class AdminEventsScreen extends ConsumerStatefulWidget {
 class _AdminEventsScreenState extends ConsumerState<AdminEventsScreen> {
   String? _selectedStatus;
   String _searchQuery = '';
-  int _page = 1;
-  bool _isLoading = false;
+  bool _isLoading = true;
   List<dynamic> _events = [];
-  bool _hasMore = true;
-  final ScrollController _scrollController = ScrollController();
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     _loadEvents();
-    _scrollController.addListener(_onScroll);
   }
 
-  Future<void> _loadEvents({bool refresh = false}) async {
-    if (_isLoading || (!_hasMore && !refresh)) return;
-    setState(() => _isLoading = true);
-    if (refresh) {
-      _page = 1;
-      _hasMore = true;
-      _events = [];
-    }
+  Future<void> _loadEvents() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final repo = ref.read(adminRepositoryProvider);
-      final result = await repo.getEvents(
-        page: _page,
-        limit: 20,
+      final events = await repo.getEvents(
         status: _selectedStatus,
         search: _searchQuery.isNotEmpty ? _searchQuery : null,
       );
-      final events = result['data'] ?? [];
-      if (events.length < 20) _hasMore = false;
+      print('📝 Events loaded: ${events.length}');
       setState(() {
-        _events = refresh ? events : [..._events, ...events];
-        _page++;
+        _events = events;
         _isLoading = false;
       });
     } catch (e) {
       print('❌ Load events error: $e');
-      setState(() => _isLoading = false);
-    }
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      _loadEvents();
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
@@ -69,98 +56,113 @@ class _AdminEventsScreenState extends ConsumerState<AdminEventsScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? Colors.grey[900] : Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Manage Events'),
-        backgroundColor: isDark ? AppColors.grey900 : Colors.white,
+        title: const Text('Events'),
+        backgroundColor: isDark ? Colors.grey[900] : Colors.white,
         elevation: 0,
+        centerTitle: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => _loadEvents(refresh: true),
+            onPressed: _loadEvents,
           ),
         ],
       ),
       body: Column(
         children: [
-          // Search and Filter
-          Padding(
+          // Search & Filter
+          Container(
             padding: const EdgeInsets.all(16),
+            color: isDark ? Colors.grey[900] : Colors.white,
             child: Column(
               children: [
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search events...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: isDark ? AppColors.grey800 : AppColors.grey50,
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              setState(() => _searchQuery = '');
-                              _loadEvents(refresh: true);
-                            },
-                          )
-                        : null,
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.grey[800] : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  onChanged: (value) {
-                    setState(() => _searchQuery = value);
-                    _loadEvents(refresh: true);
-                  },
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search events...',
+                      hintStyle: TextStyle(
+                        color: isDark ? Colors.grey[400] : Colors.grey[500],
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: isDark ? Colors.grey[400] : Colors.grey[500],
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(
+                                Icons.close,
+                                color: isDark ? Colors.grey[400] : Colors.grey[500],
+                              ),
+                              onPressed: () {
+                                setState(() => _searchQuery = '');
+                                _loadEvents();
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (value) {
+                      setState(() => _searchQuery = value);
+                      _loadEvents();
+                    },
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _FilterChip(
+                      _StatusChip(
                         label: 'All',
                         selected: _selectedStatus == null,
                         onTap: () {
                           setState(() => _selectedStatus = null);
-                          _loadEvents(refresh: true);
+                          _loadEvents();
                         },
                         isDark: isDark,
                       ),
-                      _FilterChip(
+                      _StatusChip(
                         label: 'Published',
                         selected: _selectedStatus == 'published',
                         onTap: () {
                           setState(() => _selectedStatus = 'published');
-                          _loadEvents(refresh: true);
+                          _loadEvents();
                         },
                         isDark: isDark,
                         color: Colors.green,
                       ),
-                      _FilterChip(
+                      _StatusChip(
                         label: 'Ongoing',
                         selected: _selectedStatus == 'ongoing',
                         onTap: () {
                           setState(() => _selectedStatus = 'ongoing');
-                          _loadEvents(refresh: true);
+                          _loadEvents();
                         },
                         isDark: isDark,
                         color: Colors.blue,
                       ),
-                      _FilterChip(
+                      _StatusChip(
                         label: 'Completed',
                         selected: _selectedStatus == 'completed',
                         onTap: () {
                           setState(() => _selectedStatus = 'completed');
-                          _loadEvents(refresh: true);
+                          _loadEvents();
                         },
                         isDark: isDark,
                         color: Colors.grey,
                       ),
-                      _FilterChip(
+                      _StatusChip(
                         label: 'Cancelled',
                         selected: _selectedStatus == 'cancelled',
                         onTap: () {
                           setState(() => _selectedStatus = 'cancelled');
-                          _loadEvents(refresh: true);
+                          _loadEvents();
                         },
                         isDark: isDark,
                         color: Colors.red,
@@ -171,30 +173,48 @@ class _AdminEventsScreenState extends ConsumerState<AdminEventsScreen> {
               ],
             ),
           ),
+          // Event List
           Expanded(
-            child: _events.isEmpty && !_isLoading
-                ? const EmptyStateWidget(
-                    title: 'No Events Found',
-                    message: 'No events match your search criteria',
-                    icon: Icons.event_busy,
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _events.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == _events.length) {
-                        return _isLoading
-                            ? const Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Center(child: CircularProgressIndicator()),
-                              )
-                            : const SizedBox.shrink();
-                      }
-                      final event = _events[index];
-                      return _EventCard(event: event, isDark: isDark);
-                    },
-                  ),
+            child: _isLoading
+                ? const LoadingWidget()
+                : _error != null
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error_outline, size: 60, color: Colors.red),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Error: $_error',
+                              style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _loadEvents,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _events.isEmpty
+                        ? const EmptyStateWidget(
+                            title: 'No Events Found',
+                            message: 'No events match your search criteria',
+                            icon: Icons.event_busy,
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _events.length,
+                            itemBuilder: (context, index) {
+                              final event = _events[index];
+                              return _EventCard(event: event, isDark: isDark);
+                            },
+                          ),
           ),
         ],
       ),
@@ -202,14 +222,14 @@ class _AdminEventsScreenState extends ConsumerState<AdminEventsScreen> {
   }
 }
 
-class _FilterChip extends StatelessWidget {
+class _StatusChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
   final bool isDark;
   final Color? color;
 
-  const _FilterChip({
+  const _StatusChip({
     required this.label,
     required this.selected,
     required this.onTap,
@@ -221,25 +241,23 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-        backgroundColor: isDark ? AppColors.grey800 : Colors.white,
-        selectedColor: (color ?? AppColors.primary).withOpacity(0.2),
-        labelStyle: TextStyle(
-          color: selected
-              ? (color ?? AppColors.primary)
-              : (isDark ? Colors.white : Colors.black),
-          fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-        ),
-        checkmarkColor: color ?? AppColors.primary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
             color: selected
                 ? (color ?? AppColors.primary)
-                : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                : (isDark ? Colors.grey[800] : Colors.grey[200]),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: selected ? Colors.white : (isDark ? Colors.grey[300] : Colors.grey[700]),
+            ),
           ),
         ),
       ),
@@ -264,6 +282,9 @@ class _EventCard extends StatelessWidget {
     final organizerName = organizer != null 
         ? '${organizer['firstName'] ?? ''} ${organizer['lastName'] ?? ''}'.trim()
         : 'Unknown';
+    final createdAt = event['createdAt'] != null
+        ? DateFormat('MMM d, yyyy').format(DateTime.parse(event['createdAt']))
+        : '';
 
     Color getStatusColor() {
       switch (status) {
@@ -284,12 +305,12 @@ class _EventCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.grey800 : Colors.white,
+        color: isDark ? Colors.grey[800] : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -307,7 +328,7 @@ class _EventCard extends StatelessWidget {
             ),
             child: const Icon(Icons.event, color: Colors.white, size: 24),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,7 +338,7 @@ class _EventCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    color: isDark ? Colors.white : Colors.black,
                   ),
                 ),
                 Text(
@@ -327,10 +348,11 @@ class _EventCard extends StatelessWidget {
                     color: isDark ? Colors.grey[400] : Colors.grey[600],
                   ),
                 ),
+                const SizedBox(height: 4),
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                       decoration: BoxDecoration(
                         color: getStatusColor().withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -346,12 +368,10 @@ class _EventCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      event['createdAt'] != null
-                          ? DateTime.parse(event['createdAt']).toString().split(' ')[0]
-                          : '',
+                      createdAt,
                       style: TextStyle(
                         fontSize: 11,
-                        color: isDark ? Colors.grey[500] : Colors.grey[400],
+                        color: isDark ? Colors.grey[400] : Colors.grey[500],
                       ),
                     ),
                   ],
@@ -360,11 +380,9 @@ class _EventCard extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.edit_outlined, size: 20),
-            color: AppColors.primary,
-            onPressed: () {
-              // Show edit dialog
-            },
+            icon: const Icon(Icons.more_vert, size: 20),
+            color: isDark ? Colors.grey[400] : Colors.grey[600],
+            onPressed: () {},
           ),
         ],
       ),
